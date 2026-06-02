@@ -29,7 +29,7 @@ use windows::Win32::System::Diagnostics::ToolHelp::{
 };
 use windows::Win32::System::Threading::GetCurrentThreadId;
 use windows::Win32::UI::Accessibility::{SetWinEventHook, UnhookWinEvent, HWINEVENTHOOK};
-use windows::Win32::UI::Input::KeyboardAndMouse::GetKeyState;
+use windows::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState;
 use windows::Win32::UI::WindowsAndMessaging::{
     CallNextHookEx, GetMessageW, GetWindowTextW, PostThreadMessageW, SetWindowsHookExW,
     UnhookWindowsHookEx, EVENT_SYSTEM_FOREGROUND, HC_ACTION, HHOOK, KBDLLHOOKSTRUCT, MSG,
@@ -59,18 +59,21 @@ unsafe extern "system" fn keyboard_hook_proc(
 
             // Collect active modifier keys via GetKeyState.
             // VK_CONTROL=0x11, VK_SHIFT=0x10, VK_MENU=0x12, VK_LWIN=0x5B, VK_RWIN=0x5C
+            // Use GetAsyncKeyState (physical hardware state) instead of
+            // GetKeyState (per-thread synchronous state) so modifiers are
+            // detected correctly even when Koakuma's own window has focus.
             let mut modifiers = Vec::new();
             unsafe {
-                if (GetKeyState(0x11) as u16) & 0x8000 != 0 {
+                if (GetAsyncKeyState(0x11) as u16) & 0x8000 != 0 {
                     modifiers.push(Value::Str("Ctrl".to_string()));
                 }
-                if (GetKeyState(0x10) as u16) & 0x8000 != 0 {
+                if (GetAsyncKeyState(0x10) as u16) & 0x8000 != 0 {
                     modifiers.push(Value::Str("Shift".to_string()));
                 }
-                if (GetKeyState(0x12) as u16) & 0x8000 != 0 {
+                if (GetAsyncKeyState(0x12) as u16) & 0x8000 != 0 {
                     modifiers.push(Value::Str("Alt".to_string()));
                 }
-                if ((GetKeyState(0x5B) as u16) | (GetKeyState(0x5C) as u16)) & 0x8000 != 0 {
+                if ((GetAsyncKeyState(0x5B) as u16) | (GetAsyncKeyState(0x5C) as u16)) & 0x8000 != 0 {
                     modifiers.push(Value::Str("Win".to_string()));
                 }
             }
