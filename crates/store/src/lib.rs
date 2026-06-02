@@ -1,7 +1,101 @@
+//! State persistence: in-memory runtime store and JSON macro file I/O.
+//!
+//! # Runtime store
+//!
+//! [`InMemoryStateStore`] implements [`StateStore`] for development and M1 runtime use.
+//!
+//! # JSON persistence
+//!
+//! [`load_macros`] and [`save_macros`] provide atomic read/write for `macros.json`.
+//! Saves write to a `.tmp` side-file, then rename to guarantee the on-disk file is
+//! never left in a partially-written state.
+
 use std::collections::BTreeMap;
+use std::path::Path;
 use std::sync::Mutex;
+
+use koakuma_core::domain::Macro;
 use koakuma_core::state::StateStore;
 use koakuma_core::value::Value;
+use thiserror::Error;
+
+// ── Error ─────────────────────────────────────────────────────────────────────
+
+/// Errors that can occur when loading or saving the macro configuration file.
+///
+/// # Examples
+///
+/// ```rust
+/// use koakuma_store::StoreError;
+///
+/// let io_err: StoreError = std::io::Error::from(std::io::ErrorKind::PermissionDenied).into();
+/// assert!(matches!(io_err, StoreError::Io(_)));
+/// ```
+#[derive(Debug, Error)]
+pub enum StoreError {
+    /// A filesystem operation failed.
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
+    /// JSON serialisation or deserialisation failed.
+    #[error("JSON error: {0}")]
+    Json(#[from] serde_json::Error),
+}
+
+// ── JSON persistence ──────────────────────────────────────────────────────────
+
+/// Deserialises a [`Macro`] list from a UTF-8 JSON file.
+///
+/// Returns an empty `Vec` if the file does not exist, so callers can treat a
+/// missing file the same as an empty configuration.
+///
+/// # Errors
+///
+/// Returns [`StoreError::Io`] for filesystem errors other than *not-found*, and
+/// [`StoreError::Json`] if the file content is not a valid macro array.
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use koakuma_store::load_macros;
+///
+/// let macros = load_macros(std::path::Path::new("macros.json")).unwrap();
+/// println!("loaded {} macro(s)", macros.len());
+/// ```
+pub fn load_macros(path: &Path) -> Result<Vec<Macro>, StoreError> {
+    match std::fs::read_to_string(path) {
+        Ok(data) => Ok(serde_json::from_str(&data)?),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Vec::new()),
+        Err(e) => Err(StoreError::Io(e)),
+    }
+}
+
+/// Atomically serialises `macros` to a JSON file at `path`.
+///
+/// The function writes to `<path>.tmp`, then renames to `path`. A crash during
+/// writing leaves the original file intact — only a successful `rename` replaces
+/// it.
+///
+/// # Errors
+///
+/// Returns [`StoreError::Json`] if serialisation fails, or [`StoreError::Io`]
+/// for any filesystem error.
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use koakuma_store::save_macros;
+///
+/// save_macros(std::path::Path::new("macros.json"), &[]).unwrap();
+/// ```
+pub fn save_macros(path: &Path, macros: &[Macro]) -> Result<(), StoreError> {
+    let json = serde_json::to_string_pretty(macros)?;
+    let tmp = path.with_extension("json.tmp");
+    std::fs::write(&tmp, json.as_bytes())?;
+    std::fs::rename(&tmp, path)?;
+    Ok(())
+}
+
+// ── In-memory runtime store ───────────────────────────────────────────────────
 
 /// An in-memory implementation of [`StateStore`] backed by a `Mutex<BTreeMap>`.
 ///

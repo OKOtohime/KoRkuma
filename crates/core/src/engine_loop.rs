@@ -40,6 +40,30 @@ impl EngineHandle {
         let _ = self.cmd_tx.send(cmd);
     }
 
+    /// Returns a cloneable [`Sender`] for dispatching [`EngineCommand`]s.
+    ///
+    /// Distribute clones of this sender to UI callbacks or threads that need
+    /// engine access without holding a reference to `EngineHandle`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// # use std::sync::Arc;
+    /// # use koakuma_core::engine_loop::start_engine;
+    /// # use koakuma_core::engine::EngineCommand;
+    /// # use koakuma_core::registry::Registry;
+    /// # use koakuma_store::InMemoryStateStore;
+    /// let registry = Arc::new(Registry::with_builtins());
+    /// let store: Arc<dyn koakuma_core::state::StateStore> =
+    ///     Arc::new(InMemoryStateStore::new());
+    /// let (engine, _sink) = start_engine(registry, store, |_ev| {});
+    /// let sender = engine.clone_sender();
+    /// sender.send(EngineCommand::Shutdown).ok();
+    /// ```
+    pub fn clone_sender(&self) -> crossbeam_channel::Sender<EngineCommand> {
+        self.cmd_tx.clone()
+    }
+
     /// Sends [`EngineCommand::Shutdown`] and waits for the engine thread to exit.
     ///
     /// No-op if `stop` was already called (idempotent via `Option::take`).
