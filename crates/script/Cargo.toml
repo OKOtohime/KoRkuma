@@ -1,0 +1,13 @@
+[package]
+name = "koakuma-script"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+koakuma-core = { workspace = true }
+serde_json   = { workspace = true }
+rhai         = { workspace = true }
+
+[dev-dependencies]
+koakuma-store = { workspace = true }
+uuid          = { workspace = true }

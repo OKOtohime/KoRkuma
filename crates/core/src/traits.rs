@@ -114,6 +114,7 @@ pub trait Constraint: Send + Sync {
 /// assert!(matches!(decide(true),  Outcome::Stop));
 /// assert!(matches!(decide(false), Outcome::Continue));
 /// ```
+#[derive(Debug)]
 pub enum Outcome {
     /// Continue to the next action in the sequence.
     Continue,

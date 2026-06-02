@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
+use crate::domain::ActionConfig;
 
 /// Restricts a file permission to a specific path, a directory prefix, or any path.
 ///
@@ -125,4 +126,43 @@ impl PermissionGrant {
     pub fn allows(&self, permission: &Permission) -> bool {
         self.granted.contains(permission)
     }
+}
+
+/// Statically aggregates the [`PermissionSet`] required by a list of action configs.
+///
+/// Inspects each [`ActionConfig`] variant and collects the union of required
+/// permissions without instantiating the actions. Used at macro-save time to
+/// populate [`domain::Macro::granted_permissions`].
+///
+/// # Examples
+///
+/// ```rust
+/// use koakuma_core::domain::ActionConfig;
+/// use koakuma_core::permission::{Permission, aggregate_from_configs};
+///
+/// let actions = vec![
+///     ActionConfig::RunCommand { program: "echo".to_string(), args: vec![], capture: false },
+///     ActionConfig::Notify { title: "T".to_string(), body: "B".to_string() },
+/// ];
+/// let set = aggregate_from_configs(&actions);
+/// assert_eq!(set.0.len(), 1);
+/// assert!(set.0.contains(&Permission::RunCommand));
+/// ```
+pub fn aggregate_from_configs(actions: &[ActionConfig]) -> PermissionSet {
+    let mut perms: Vec<Permission> = Vec::new();
+    for action in actions {
+        let required: &[Permission] = match action {
+            ActionConfig::RunCommand { .. }    => &[Permission::RunCommand],
+            ActionConfig::SimulateInput { .. } => &[Permission::InputSimulation],
+            ActionConfig::RunScript { .. }     => &[Permission::ScriptExecution],
+            ActionConfig::HttpRequest { .. }   => &[Permission::Network],
+            _ => &[],
+        };
+        for p in required {
+            if !perms.contains(p) {
+                perms.push(p.clone());
+            }
+        }
+    }
+    PermissionSet(perms)
 }

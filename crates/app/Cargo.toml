@@ -13,6 +13,7 @@ koakuma-core        = { workspace = true }
 koakuma-hooks       = { workspace = true }
 koakuma-actions     = { workspace = true }
 koakuma-constraints = { workspace = true }
+koakuma-script      = { workspace = true }
 koakuma-store       = { workspace = true }
 slint               = { workspace = true, features = ["renderer-femtovg", "renderer-software"] }
 serde_json          = { workspace = true }

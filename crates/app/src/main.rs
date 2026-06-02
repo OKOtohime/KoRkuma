@@ -11,12 +11,13 @@ use koakuma_core::{
     domain::{ActionConfig, ConstraintExpr, Macro, TriggerConfig},
     engine::{EngineCommand, EngineEvent, LogLevel},
     engine_loop::start_engine,
-    permission::PermissionSet,
+    permission::aggregate_from_configs,
     state::StateStore,
 };
 use koakuma_store::{load_macros, save_macros, InMemoryStateStore};
 use koakuma_hooks::register_trigger_specs;
 use koakuma_actions::register_all as register_actions;
+use koakuma_script::{register_actions as register_script_actions, register_constraints as register_script_constraints};
 
 const MACROS_PATH: &str = "macros.json";
 
@@ -25,7 +26,7 @@ fn main() -> Result<(), slint::PlatformError> {
     let backend = select_backend();
 
     println!("╔══════════════════════════════════════════╗");
-    println!("║   Koakuma  —  Automation Engine (M1.3)   ║");
+    println!("║   Koakuma  —  Automation Engine (M1.4)   ║");
     println!("╚══════════════════════════════════════════╝");
     println!("[koakuma] renderer: {backend}");
 
@@ -33,6 +34,8 @@ fn main() -> Result<(), slint::PlatformError> {
     let mut registry = koakuma_core::registry::Registry::with_builtins();
     register_trigger_specs(&mut registry);
     register_actions(&mut registry);
+    register_script_actions(&mut registry);
+    register_script_constraints(&mut registry);
     let registry = Arc::new(registry);
 
     // ── 2. State store ────────────────────────────────────────────────────────
@@ -440,7 +443,15 @@ fn format_engine_event(ev: &EngineEvent) -> String {
 }
 
 /// Builds a ready-to-use default [`Macro`] with a Manual trigger and a Notify action.
+///
+/// `granted_permissions` is auto-populated from the action list so the macro
+/// can execute immediately without a separate authorization step.
 fn create_default_macro() -> Macro {
+    let actions = vec![ActionConfig::Notify {
+        title: "Koakuma".to_string(),
+        body: "Macro fired!".to_string(),
+    }];
+    let granted_permissions = aggregate_from_configs(&actions);
     Macro {
         id: uuid::Uuid::new_v4(),
         name: "New Macro".to_string(),
@@ -449,11 +460,8 @@ fn create_default_macro() -> Macro {
         category: None,
         triggers: vec![TriggerConfig::Manual],
         constraints: ConstraintExpr::Always,
-        actions: vec![ActionConfig::Notify {
-            title: "Koakuma".to_string(),
-            body: "Macro fired!".to_string(),
-        }],
-        granted_permissions: PermissionSet::default(),
+        actions,
+        granted_permissions,
     }
 }
 

@@ -4,6 +4,7 @@ members = [
     "crates/hooks",
     "crates/actions",
     "crates/constraints",
+    "crates/script",
     "crates/store",
     "crates/app",
 ]
@@ -14,6 +15,7 @@ koakuma-core        = { path = "crates/core" }
 koakuma-hooks       = { path = "crates/hooks" }
 koakuma-actions     = { path = "crates/actions" }
 koakuma-constraints = { path = "crates/constraints" }
+koakuma-script      = { path = "crates/script" }
 koakuma-store       = { path = "crates/store" }
 
 serde             = { version = "1", features = ["derive"] }
@@ -22,4 +24,5 @@ uuid              = { version = "1", features = ["v4", "serde"] }
 thiserror         = "2"
 crossbeam-channel = "0.5"
 notify            = "6"
+rhai              = "1"
 slint             = "1.16.1"

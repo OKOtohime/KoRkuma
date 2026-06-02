@@ -260,17 +260,33 @@ impl EventRouter {
 
         for action_cfg in &m.actions {
             match registry.build_action(action_cfg) {
-                Ok(action) => match action.execute(&mut exec_ctx) {
-                    Ok(Outcome::Continue) => {}
-                    Ok(Outcome::Stop) => break,
-                    Err(e) => {
+                Ok(action) => {
+                    // Central permission gate: verify all required permissions before execution.
+                    let denied = action
+                        .required_permissions()
+                        .0
+                        .iter()
+                        .find(|p| !exec_ctx.permissions.allows(p))
+                        .map(|p| format!("{p:?}"));
+                    if let Some(name) = denied {
                         output.push(EngineEvent::Error {
                             macro_id: Some(macro_id),
-                            message: e.to_string(),
+                            message: format!("permission denied: {name}"),
                         });
                         break;
                     }
-                },
+                    match action.execute(&mut exec_ctx) {
+                        Ok(Outcome::Continue) => {}
+                        Ok(Outcome::Stop) => break,
+                        Err(e) => {
+                            output.push(EngineEvent::Error {
+                                macro_id: Some(macro_id),
+                                message: e.to_string(),
+                            });
+                            break;
+                        }
+                    }
+                }
                 Err(e) => {
                     output.push(EngineEvent::Error {
                         macro_id: Some(macro_id),
