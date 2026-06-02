@@ -113,3 +113,6 @@ rust-project.json
 
 
 # End of https://www.toptal.com/developers/gitignore/api/rust,rust-analyzer,jetbrains+all
+
+macros.json
+macros.json.example

@@ -21,14 +21,13 @@ use koakuma_actions::register_all as register_actions;
 const MACROS_PATH: &str = "macros.json";
 
 fn main() -> Result<(), slint::PlatformError> {
-    if std::env::var("SLINT_BACKEND").is_err() {
-        // SAFETY: called before any threads or Slint initialisation.
-        unsafe { std::env::set_var("SLINT_BACKEND", "winit-software"); }
-    }
+    // Auto-detect rendering backend before any Slint initialisation.
+    let backend = select_backend();
 
     println!("╔══════════════════════════════════════════╗");
     println!("║   Koakuma  —  Automation Engine (M1.3)   ║");
     println!("╚══════════════════════════════════════════╝");
+    println!("[koakuma] renderer: {backend}");
 
     // ── 1. Registry ───────────────────────────────────────────────────────────
     let mut registry = koakuma_core::registry::Registry::with_builtins();
@@ -40,7 +39,17 @@ fn main() -> Result<(), slint::PlatformError> {
     let store: Arc<dyn StateStore> = Arc::new(InMemoryStateStore::new());
 
     // ── 3. UI & models ────────────────────────────────────────────────────────
-    let ui = MainWindow::new()?;
+    // If femtovg fails before set_platform commits, silently retry with software.
+    let ui = match MainWindow::new() {
+        Ok(w) => w,
+        Err(e) if backend == "winit-femtovg" => {
+            eprintln!("[koakuma] femtovg init failed ({e}); falling back to software renderer");
+            // SAFETY: engine thread not yet spawned; Slint platform not yet committed.
+            unsafe { std::env::set_var("SLINT_BACKEND", "winit-software"); }
+            MainWindow::new()?
+        }
+        Err(e) => return Err(e),
+    };
     let ui_weak = ui.as_weak();
 
     let macros_model: Rc<VecModel<MacroItem>> = Rc::new(VecModel::default());
@@ -446,6 +455,66 @@ fn create_default_macro() -> Macro {
         }],
         granted_permissions: PermissionSet::default(),
     }
+}
+
+// ── Renderer detection ────────────────────────────────────────────────────────
+
+/// Probes hardware OpenGL availability and sets `SLINT_BACKEND` accordingly.
+///
+/// Must be called before any Slint initialisation (before `MainWindow::new()`).
+/// Returns the chosen backend name for logging.
+fn select_backend() -> &'static str {
+    // Respect an explicit user override — don't touch it.
+    if std::env::var("SLINT_BACKEND").is_ok() {
+        return "custom (SLINT_BACKEND env)";
+    }
+    let backend = if hardware_gl_available() { "winit-femtovg" } else { "winit-software" };
+    // SAFETY: called before Slint initialisation and before spawning any threads
+    // that could concurrently read the environment.
+    unsafe { std::env::set_var("SLINT_BACKEND", backend); }
+    backend
+}
+
+/// Returns `true` if hardware-accelerated OpenGL is likely available.
+///
+/// Checks cross-platform Mesa/Gallium env vars first, then delegates to a
+/// platform-specific DRI/display-server probe.  Errs on the side of `false`
+/// (software fallback) when the outcome is uncertain.
+fn hardware_gl_available() -> bool {
+    // Explicit software-rendering overrides (CI, Mesa, Gallium, user request).
+    if std::env::var("LIBGL_ALWAYS_SOFTWARE").ok().as_deref() == Some("1") {
+        return false;
+    }
+    if std::env::var("GALLIUM_DRIVER")
+        .ok()
+        .map(|d| matches!(d.as_str(), "llvmpipe" | "softpipe" | "swr"))
+        .unwrap_or(false)
+    {
+        return false;
+    }
+    platform_has_hw_gl()
+}
+
+/// Linux probe: a DRM render node must be present *and* a display server must
+/// be reachable (winit needs one regardless of the renderer).
+#[cfg(target_os = "linux")]
+fn platform_has_hw_gl() -> bool {
+    let has_gpu = std::path::Path::new("/dev/dri/renderD128").exists()
+        || std::path::Path::new("/dev/dri/card0").exists();
+    has_gpu && (std::env::var("DISPLAY").is_ok() || std::env::var("WAYLAND_DISPLAY").is_ok())
+}
+
+/// Windows probe: optimistic default; software env-var overrides (checked above)
+/// cover the common VM/RDP cases.
+#[cfg(target_os = "windows")]
+fn platform_has_hw_gl() -> bool {
+    true
+}
+
+/// Fallback for other platforms (macOS, etc.): assume hardware is available.
+#[cfg(not(any(target_os = "linux", target_os = "windows")))]
+fn platform_has_hw_gl() -> bool {
+    true
 }
 
 /// Starts all Windows hook providers and returns them for clean shutdown.
