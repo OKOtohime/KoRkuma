@@ -1,10 +1,11 @@
 slint::include_modules!();
 
-use std::cell::RefCell;
 use std::rc::Rc;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use slint::{Model, ModelRc, VecModel};
+use notify::{EventKind, RecursiveMode, Watcher};
 
 use koakuma_core::{
     domain::{ActionConfig, ConstraintExpr, Macro, TriggerConfig},
@@ -20,8 +21,6 @@ use koakuma_actions::register_all as register_actions;
 const MACROS_PATH: &str = "macros.json";
 
 fn main() -> Result<(), slint::PlatformError> {
-    // Default to software renderer so the app works on VMs without a GPU driver.
-    // Override with SLINT_BACKEND=winit-femtovg to enable hardware acceleration.
     if std::env::var("SLINT_BACKEND").is_err() {
         // SAFETY: called before any threads or Slint initialisation.
         unsafe { std::env::set_var("SLINT_BACKEND", "winit-software"); }
@@ -50,10 +49,10 @@ fn main() -> Result<(), slint::PlatformError> {
     ui.set_macros(ModelRc::from(macros_model.clone()));
     ui.set_logs(ModelRc::from(logs_model.clone()));
 
-    // Main-thread-only macro list; shared across UI callbacks via Rc<RefCell>.
-    let local_macros: Rc<RefCell<Vec<Macro>>> = Rc::new(RefCell::new(Vec::new()));
+    // Arc<Mutex> so the hot-reload watcher thread can share this list.
+    let local_macros: Arc<Mutex<Vec<Macro>>> = Arc::new(Mutex::new(Vec::new()));
 
-    // ── 4. Start engine with UI bridge ────────────────────────────────────────
+    // ── 4. Start engine ───────────────────────────────────────────────────────
     let (engine, _event_sink) = start_engine(
         Arc::clone(&registry),
         Arc::clone(&store),
@@ -64,12 +63,8 @@ fn main() -> Result<(), slint::PlatformError> {
                 // Cross-thread: schedule a model update on the main (UI) thread.
                 let _ = ui_weak.upgrade_in_event_loop(move |ui| {
                     let model_rc = ui.get_logs();
-                    if let Some(model) =
-                        model_rc.as_any().downcast_ref::<VecModel<LogEntry>>()
-                    {
-                        // Prepend so newest entries appear at the top.
+                    if let Some(model) = model_rc.as_any().downcast_ref::<VecModel<LogEntry>>() {
                         model.insert(0, LogEntry { message: msg.into() });
-                        // Bound the log to 500 entries.
                         while model.row_count() > 500 {
                             model.remove(model.row_count() - 1);
                         }
@@ -81,7 +76,7 @@ fn main() -> Result<(), slint::PlatformError> {
 
     let engine_sender = engine.clone_sender();
 
-    // ── 5. Start hook providers (Windows only) ────────────────────────────────
+    // ── 5. Start hooks (Windows only) ─────────────────────────────────────────
     #[cfg(target_os = "windows")]
     let _providers = start_hooks(_event_sink);
 
@@ -89,6 +84,7 @@ fn main() -> Result<(), slint::PlatformError> {
     match load_macros(std::path::Path::new(MACROS_PATH)) {
         Ok(loaded) => {
             println!("[koakuma] loaded {} macro(s) from {MACROS_PATH}", loaded.len());
+            let mut guard = local_macros.lock().unwrap();
             for m in loaded {
                 macros_model.push(MacroItem {
                     id: m.id.to_string().into(),
@@ -96,7 +92,7 @@ fn main() -> Result<(), slint::PlatformError> {
                     enabled: m.enabled,
                 });
                 engine.send(EngineCommand::AddMacro(m.clone()));
-                local_macros.borrow_mut().push(m);
+                guard.push(m);
             }
         }
         Err(e) => {
@@ -105,74 +101,85 @@ fn main() -> Result<(), slint::PlatformError> {
         }
     }
 
-    // ── 7. Wire callbacks ─────────────────────────────────────────────────────
+    // ── 7. Hot-reload watcher ─────────────────────────────────────────────────
+    // suppress_reload is set true before every UI-triggered persist() call so the
+    // resulting rename event is silently ignored by the watcher thread.
+    let suppress_reload = Arc::new(AtomicBool::new(false));
+    let _watcher = spawn_file_watcher(
+        Arc::clone(&local_macros),
+        engine_sender.clone(),
+        ui_weak.clone(),
+        Arc::clone(&suppress_reload),
+    );
+
+    // ── 8. Wire callbacks ─────────────────────────────────────────────────────
 
     // add-macro: create a default macro, register with engine, append to models
     {
-        let local_macros = local_macros.clone();
+        let local_macros = Arc::clone(&local_macros);
         let macros_model = macros_model.clone();
         let engine_sender = engine_sender.clone();
         let ui_weak = ui_weak.clone();
+        let suppress_reload = Arc::clone(&suppress_reload);
         ui.on_add_macro(move || {
             let m = create_default_macro();
-            let new_idx = local_macros.borrow().len() as i32;
+            let new_idx = local_macros.lock().unwrap().len() as i32;
             macros_model.push(MacroItem {
                 id: m.id.to_string().into(),
                 name: m.name.clone().into(),
                 enabled: m.enabled,
             });
             engine_sender.send(EngineCommand::AddMacro(m.clone())).ok();
-            local_macros.borrow_mut().push(m);
-            // Auto-select the new macro and populate the editor.
+            local_macros.lock().unwrap().push(m);
             if let Some(ui) = ui_weak.upgrade() {
                 ui.set_selected_index(new_idx);
-                let list = local_macros.borrow();
+                let list = local_macros.lock().unwrap();
                 refresh_editor(&ui, &list, new_idx as usize);
             }
-            persist(&local_macros.borrow());
+            persist(&local_macros.lock().unwrap(), &suppress_reload);
         });
     }
 
     // delete-macro: remove by index, update engine and models
     {
-        let local_macros = local_macros.clone();
+        let local_macros = Arc::clone(&local_macros);
         let macros_model = macros_model.clone();
         let engine_sender = engine_sender.clone();
         let ui_weak = ui_weak.clone();
+        let suppress_reload = Arc::clone(&suppress_reload);
         ui.on_delete_macro(move |idx| {
             let idx = idx as usize;
-            let macro_id = local_macros.borrow().get(idx).map(|m| m.id);
+            let macro_id = local_macros.lock().unwrap().get(idx).map(|m| m.id);
             if let Some(id) = macro_id {
                 engine_sender.send(EngineCommand::DeleteMacro(id)).ok();
                 macros_model.remove(idx);
-                local_macros.borrow_mut().remove(idx);
+                local_macros.lock().unwrap().remove(idx);
                 if let Some(ui) = ui_weak.upgrade() {
                     let sel = ui.get_selected_index();
                     if sel == idx as i32 {
-                        // Deleted the selected row — clear editor.
                         ui.set_selected_index(-1);
                         ui.set_selected_triggers("".into());
                         ui.set_selected_constraints("".into());
                         ui.set_selected_actions("".into());
                     } else if sel > idx as i32 {
-                        // Rows above shifted; keep pointing at the same macro.
                         ui.set_selected_index(sel - 1);
                     }
                 }
-                persist(&local_macros.borrow());
+                persist(&local_macros.lock().unwrap(), &suppress_reload);
             }
         });
     }
 
     // toggle-enabled: flip enabled flag, notify engine, update model row
     {
-        let local_macros = local_macros.clone();
+        let local_macros = Arc::clone(&local_macros);
         let macros_model = macros_model.clone();
         let engine_sender = engine_sender.clone();
+        let suppress_reload = Arc::clone(&suppress_reload);
         ui.on_toggle_enabled(move |idx, enabled| {
             let idx = idx as usize;
             let macro_id = {
-                let mut list = local_macros.borrow_mut();
+                let mut list = local_macros.lock().unwrap();
                 if let Some(m) = list.get_mut(idx) {
                     m.enabled = enabled;
                     Some(m.id)
@@ -185,24 +192,24 @@ fn main() -> Result<(), slint::PlatformError> {
                 if let Some(row) = macros_model.row_data(idx) {
                     macros_model.set_row_data(idx, MacroItem { enabled, ..row });
                 }
-                persist(&local_macros.borrow());
+                persist(&local_macros.lock().unwrap(), &suppress_reload);
             }
         });
     }
 
     // trigger-macro: dispatch manual trigger for the selected macro
     {
-        let local_macros = local_macros.clone();
+        let local_macros = Arc::clone(&local_macros);
         let engine_sender = engine_sender.clone();
         let ui_weak = ui_weak.clone();
         ui.on_trigger_macro(move |idx| {
             let idx = idx as usize;
-            let macro_id = local_macros.borrow().get(idx).map(|m| m.id);
+            let macro_id = local_macros.lock().unwrap().get(idx).map(|m| m.id);
             if let Some(id) = macro_id {
                 engine_sender.send(EngineCommand::TriggerManually(id)).ok();
             }
             if let Some(ui) = ui_weak.upgrade() {
-                let list = local_macros.borrow();
+                let list = local_macros.lock().unwrap();
                 refresh_editor(&ui, &list, idx);
             }
         });
@@ -210,21 +217,21 @@ fn main() -> Result<(), slint::PlatformError> {
 
     // macro-selected: populate the 3-tab editor for the clicked row
     {
-        let local_macros = local_macros.clone();
+        let local_macros = Arc::clone(&local_macros);
         let ui_weak = ui_weak.clone();
         ui.on_macro_selected(move |idx| {
             if idx < 0 { return; }
             if let Some(ui) = ui_weak.upgrade() {
-                let list = local_macros.borrow();
+                let list = local_macros.lock().unwrap();
                 refresh_editor(&ui, &list, idx as usize);
             }
         });
     }
 
-    // ── 8. Run UI ─────────────────────────────────────────────────────────────
+    // ── 9. Run UI ─────────────────────────────────────────────────────────────
     ui.run()?;
 
-    // ── 9. Graceful shutdown ──────────────────────────────────────────────────
+    // ── 10. Graceful shutdown ─────────────────────────────────────────────────
     #[cfg(target_os = "windows")]
     {
         let mut providers = _providers;
@@ -238,12 +245,148 @@ fn main() -> Result<(), slint::PlatformError> {
     Ok(())
 }
 
+// ── File watcher ──────────────────────────────────────────────────────────────
+
+/// Watches the current directory for changes to [`MACROS_PATH`] and hot-reloads
+/// macros into the engine and UI on external edits.
+///
+/// Returns the watcher handle; must remain live for the duration of the UI loop.
+/// Drops automatically on shutdown, closing the internal channel and causing the
+/// watcher thread to exit cleanly.
+fn spawn_file_watcher(
+    local_macros: Arc<Mutex<Vec<Macro>>>,
+    engine_sender: crossbeam_channel::Sender<EngineCommand>,
+    ui_weak: slint::Weak<MainWindow>,
+    suppress_reload: Arc<AtomicBool>,
+) -> notify::RecommendedWatcher {
+    let (tx, rx) = std::sync::mpsc::channel::<notify::Result<notify::Event>>();
+    let mut watcher =
+        notify::recommended_watcher(tx).expect("failed to create file watcher");
+    watcher
+        .watch(std::path::Path::new("."), RecursiveMode::NonRecursive)
+        .expect("failed to watch current directory");
+
+    std::thread::spawn(move || {
+        for res in rx {
+            let event = match res {
+                Ok(e) => e,
+                Err(e) => { eprintln!("[koakuma] watcher error: {e}"); continue; }
+            };
+
+            // Only react to events whose path is exactly macros.json (not .tmp).
+            let is_macros_json = event.paths.iter().any(|p| {
+                p.file_name().and_then(|n| n.to_str()) == Some(MACROS_PATH)
+            });
+            if !is_macros_json { continue; }
+
+            // Only react to create/modify events (including rename-to from atomic write).
+            match event.kind {
+                EventKind::Create(_) | EventKind::Modify(_) => {}
+                _ => continue,
+            }
+
+            // Skip if this event was triggered by our own persist() call.
+            if suppress_reload.swap(false, Ordering::Relaxed) {
+                continue;
+            }
+
+            match load_macros(std::path::Path::new(MACROS_PATH)) {
+                Ok(new_macros) => {
+                    // Diff against current list and send engine commands.
+                    {
+                        let mut current = local_macros.lock().unwrap();
+                        let old_ids: std::collections::HashSet<_> =
+                            current.iter().map(|m| m.id).collect();
+                        let new_ids: std::collections::HashSet<_> =
+                            new_macros.iter().map(|m| m.id).collect();
+
+                        for m in &new_macros {
+                            if old_ids.contains(&m.id) {
+                                engine_sender.send(EngineCommand::UpdateMacro(m.clone())).ok();
+                            } else {
+                                engine_sender.send(EngineCommand::AddMacro(m.clone())).ok();
+                            }
+                        }
+                        for id in old_ids.difference(&new_ids) {
+                            engine_sender.send(EngineCommand::DeleteMacro(*id)).ok();
+                        }
+                        *current = new_macros;
+                    }
+
+                    // Rebuild UI model on the main thread.
+                    let local_macros = Arc::clone(&local_macros);
+                    let _ = ui_weak.upgrade_in_event_loop(move |ui| {
+                        let macros = local_macros.lock().unwrap();
+                        reload_ui_model(&ui, &macros);
+                    });
+
+                    println!("[koakuma] hot-reloaded {MACROS_PATH}");
+                }
+                Err(e) => {
+                    eprintln!("[koakuma] hot-reload failed: {e}; keeping current macros");
+                    let msg = format!("[WRN] hot-reload failed: {e}");
+                    let _ = ui_weak.upgrade_in_event_loop(move |ui| {
+                        let logs_rc = ui.get_logs();
+                        if let Some(logs) = logs_rc.as_any().downcast_ref::<VecModel<LogEntry>>() {
+                            logs.insert(0, LogEntry { message: msg.into() });
+                        }
+                    });
+                }
+            }
+        }
+    });
+
+    watcher
+}
+
+/// Rebuilds the macros `VecModel`, adjusts the editor selection, and appends a
+/// hot-reload log entry.  Must be called on the Slint main thread.
+fn reload_ui_model(ui: &MainWindow, macros: &[Macro]) {
+    let model_rc = ui.get_macros();
+    if let Some(model) = model_rc.as_any().downcast_ref::<VecModel<MacroItem>>() {
+        while model.row_count() > 0 {
+            model.remove(0);
+        }
+        for m in macros {
+            model.push(MacroItem {
+                id: m.id.to_string().into(),
+                name: m.name.clone().into(),
+                enabled: m.enabled,
+            });
+        }
+    }
+
+    let sel = ui.get_selected_index();
+    if sel >= macros.len() as i32 {
+        ui.set_selected_index(-1);
+        ui.set_selected_triggers("".into());
+        ui.set_selected_constraints("".into());
+        ui.set_selected_actions("".into());
+    } else if sel >= 0 {
+        refresh_editor(ui, macros, sel as usize);
+    }
+
+    let logs_rc = ui.get_logs();
+    if let Some(logs) = logs_rc.as_any().downcast_ref::<VecModel<LogEntry>>() {
+        let msg = format!("[INF] hot-reloaded {} macro(s) from {MACROS_PATH}", macros.len());
+        logs.insert(0, LogEntry { message: msg.into() });
+        while logs.row_count() > 500 {
+            logs.remove(logs.row_count() - 1);
+        }
+    }
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/// Serialises the macro list to [`MACROS_PATH`] atomically; logs errors to stderr.
-fn persist(macros: &[Macro]) {
+/// Serialises the macro list to [`MACROS_PATH`] atomically.
+///
+/// Sets `suppress_reload` before saving so the resulting rename event is
+/// ignored by the hot-reload watcher, avoiding a redundant UI refresh.
+fn persist(macros: &[Macro], suppress_reload: &AtomicBool) {
+    suppress_reload.store(true, Ordering::Relaxed);
     if let Err(e) = save_macros(std::path::Path::new(MACROS_PATH), macros) {
         eprintln!("[koakuma] failed to save {MACROS_PATH}: {e}");
+        suppress_reload.store(false, Ordering::Relaxed);
     }
 }
 

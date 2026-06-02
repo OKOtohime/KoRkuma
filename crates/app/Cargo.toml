@@ -17,6 +17,8 @@ koakuma-store       = { workspace = true }
 slint               = { workspace = true, features = ["renderer-software"] }
 serde_json          = { workspace = true }
 uuid                = { workspace = true }
+crossbeam-channel   = { workspace = true }
+notify              = { workspace = true }
 
 [build-dependencies]
 slint-build = "1.16.1"
