@@ -1,0 +1,26 @@
+import { Button, VerticalBox } from "std-widgets.slint";
+
+export component MainWindow inherits Window {
+    width: 400px;
+    height: 300px;
+    title: "Koakuma UI";
+
+    callback request-greet(string);
+    in-out property <string> greeting: "Hello World";
+
+    VerticalBox {
+        alignment: center;
+        spacing: 20px;
+        Text {
+            text: root.greeting;
+            font-size: 24px;
+            horizontal-alignment: center;
+        }
+        Button {
+            text: "Click Me!";
+            clicked => {
+                root.request-greet("User");
+            }
+        }
+    }
+}

@@ -1,0 +1,21 @@
+[package]
+name = "koakuma-app"
+version = "0.1.0"
+edition = "2024"
+build = "build.rs"
+
+[[bin]]
+name = "koakuma"
+path = "src/main.rs"
+
+[dependencies]
+koakuma-core        = { workspace = true }
+koakuma-hooks       = { workspace = true }
+koakuma-actions     = { workspace = true }
+koakuma-constraints = { workspace = true }
+koakuma-store       = { workspace = true }
+slint               = { workspace = true }
+serde_json          = { workspace = true }
+
+[build-dependencies]
+slint-build = "1.16.1"
