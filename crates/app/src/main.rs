@@ -12,6 +12,14 @@ use koakuma_hooks::register_trigger_specs;
 use koakuma_actions::register_all as register_actions;
 
 fn main() -> Result<(), slint::PlatformError> {
+    // Default to the software renderer so the app works on VMs and machines
+    // without a GPU/OpenGL driver. Override with SLINT_BACKEND=winit-femtovg
+    // (or winit-skia) to use hardware acceleration on capable machines.
+    if std::env::var("SLINT_BACKEND").is_err() {
+        // SAFETY: called before any threads or Slint initialization.
+        unsafe { std::env::set_var("SLINT_BACKEND", "winit-software"); }
+    }
+
     println!("╔══════════════════════════════════════════╗");
     println!("║   Koakuma  —  Automation Engine (M1.2)   ║");
     println!("╚══════════════════════════════════════════╝");

@@ -14,7 +14,7 @@ koakuma-hooks       = { workspace = true }
 koakuma-actions     = { workspace = true }
 koakuma-constraints = { workspace = true }
 koakuma-store       = { workspace = true }
-slint               = { workspace = true }
+slint               = { workspace = true, features = ["renderer-software"] }
 serde_json          = { workspace = true }
 
 [build-dependencies]
