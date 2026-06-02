@@ -6,6 +6,8 @@
 
 use std::time::UNIX_EPOCH;
 
+use async_trait::async_trait;
+
 use crate::context::{EvalContext, ExecContext};
 use crate::domain::{ActionConfig, CompareOp, ConstraintConfig, TriggerConfig, VarScope};
 use crate::error::{ActionError, ConstraintError};
@@ -51,7 +53,8 @@ fn parse_hhmm(s: &str) -> Option<u32> {
 }
 
 fn event_utc_minutes(event: &Event) -> u32 {
-    let secs = event.timestamp
+    let secs = event
+        .timestamp
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_secs())
         .unwrap_or(0);
@@ -101,8 +104,14 @@ fn compare(a: &Value, op: CompareOp, b: &Value) -> bool {
         CompareOp::Ne => a != b,
         CompareOp::Lt => ord_cmp(a, b) == Some(std::cmp::Ordering::Less),
         CompareOp::Gt => ord_cmp(a, b) == Some(std::cmp::Ordering::Greater),
-        CompareOp::Le => matches!(ord_cmp(a, b), Some(std::cmp::Ordering::Less | std::cmp::Ordering::Equal)),
-        CompareOp::Ge => matches!(ord_cmp(a, b), Some(std::cmp::Ordering::Greater | std::cmp::Ordering::Equal)),
+        CompareOp::Le => matches!(
+            ord_cmp(a, b),
+            Some(std::cmp::Ordering::Less | std::cmp::Ordering::Equal)
+        ),
+        CompareOp::Ge => matches!(
+            ord_cmp(a, b),
+            Some(std::cmp::Ordering::Greater | std::cmp::Ordering::Equal)
+        ),
     }
 }
 
@@ -135,13 +144,20 @@ pub(crate) struct SetVariableAction {
     value: Value,
 }
 
+#[async_trait]
 impl Action for SetVariableAction {
-    fn id(&self) -> &'static str { "set_variable" }
-    fn required_permissions(&self) -> PermissionSet { PermissionSet::default() }
-    fn execute(&self, ctx: &mut ExecContext) -> Result<Outcome, ActionError> {
+    fn id(&self) -> &'static str {
+        "set_variable"
+    }
+    fn required_permissions(&self) -> PermissionSet {
+        PermissionSet::default()
+    }
+    async fn execute(&self, ctx: &mut ExecContext) -> Result<Outcome, ActionError> {
         match self.scope {
             VarScope::Global => ctx.store.set(&self.key, self.value.clone()),
-            VarScope::Local  => { ctx.locals.insert(self.key.clone(), self.value.clone()); }
+            VarScope::Local => {
+                ctx.locals.insert(self.key.clone(), self.value.clone());
+            }
         }
         Ok(Outcome::Continue)
     }
@@ -159,13 +175,21 @@ pub(crate) fn build_set_variable(c: &ActionConfig) -> Option<Box<dyn Action>> {
     }
 }
 
-pub(crate) struct DelayAction { millis: u64 }
+pub(crate) struct DelayAction {
+    millis: u64,
+}
 
+#[async_trait]
 impl Action for DelayAction {
-    fn id(&self) -> &'static str { "delay" }
-    fn required_permissions(&self) -> PermissionSet { PermissionSet::default() }
-    fn execute(&self, _ctx: &mut ExecContext) -> Result<Outcome, ActionError> {
-        std::thread::sleep(std::time::Duration::from_millis(self.millis));
+    fn id(&self) -> &'static str {
+        "delay"
+    }
+    fn required_permissions(&self) -> PermissionSet {
+        PermissionSet::default()
+    }
+    async fn execute(&self, _ctx: &mut ExecContext) -> Result<Outcome, ActionError> {
+        // Async sleep yields the runtime instead of blocking the worker thread.
+        tokio::time::sleep(std::time::Duration::from_millis(self.millis)).await;
         Ok(Outcome::Continue)
     }
 }

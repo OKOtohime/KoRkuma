@@ -3,9 +3,9 @@ use crate::domain::{ActionConfig, ConstraintConfig, TriggerConfig};
 use crate::error::RegistryError;
 use crate::traits::{Action, Constraint, TriggerSpec};
 
-type TriggerFn   = Box<dyn Fn(&TriggerConfig)    -> Option<Box<dyn TriggerSpec>> + Send + Sync>;
-type ConstraintFn = Box<dyn Fn(&ConstraintConfig)  -> Option<Box<dyn Constraint>>  + Send + Sync>;
-type ActionFn    = Box<dyn Fn(&ActionConfig)      -> Option<Box<dyn Action>>      + Send + Sync>;
+type TriggerFn = Box<dyn Fn(&TriggerConfig) -> Option<Box<dyn TriggerSpec>> + Send + Sync>;
+type ConstraintFn = Box<dyn Fn(&ConstraintConfig) -> Option<Box<dyn Constraint>> + Send + Sync>;
+type ActionFn = Box<dyn Fn(&ActionConfig) -> Option<Box<dyn Action>> + Send + Sync>;
 
 /// Factory that converts serializable *Config values into runtime trait objects.
 ///
@@ -13,9 +13,9 @@ type ActionFn    = Box<dyn Fn(&ActionConfig)      -> Option<Box<dyn Action>>    
 /// user-defined providers are added via `register_*` — typically called from `app`
 /// at startup.
 pub struct Registry {
-    trigger_fns:    Vec<TriggerFn>,
+    trigger_fns: Vec<TriggerFn>,
     constraint_fns: Vec<ConstraintFn>,
-    action_fns:     Vec<ActionFn>,
+    action_fns: Vec<ActionFn>,
 }
 
 impl Registry {
@@ -34,9 +34,9 @@ impl Registry {
     /// ```
     pub fn new() -> Self {
         Self {
-            trigger_fns:    Vec::new(),
+            trigger_fns: Vec::new(),
             constraint_fns: Vec::new(),
-            action_fns:     Vec::new(),
+            action_fns: Vec::new(),
         }
     }
 
@@ -148,7 +148,10 @@ impl Registry {
     /// let c = ConstraintConfig::TimeRange { from: "09:00".to_string(), to: "17:00".to_string() };
     /// assert!(reg.build_constraint(&c).is_ok());
     /// ```
-    pub fn build_constraint(&self, c: &ConstraintConfig) -> Result<Box<dyn Constraint>, RegistryError> {
+    pub fn build_constraint(
+        &self,
+        c: &ConstraintConfig,
+    ) -> Result<Box<dyn Constraint>, RegistryError> {
         self.constraint_fns
             .iter()
             .find_map(|f| f(c))
@@ -180,5 +183,7 @@ impl Registry {
 }
 
 impl Default for Registry {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }

@@ -4,13 +4,16 @@ use koakuma_core::domain::{ActionConfig, ConstraintExpr, Macro, MacroId, Trigger
 use koakuma_core::permission::PermissionSet;
 use koakuma_core::state::StateStore;
 use koakuma_core::value::Value;
-use koakuma_store::{load_macros, save_macros, InMemoryStateStore, StoreError};
+use koakuma_store::{InMemoryStateStore, StoreError, load_macros, save_macros};
 
 // ── Test helpers ──────────────────────────────────────────────────────────────
 
 fn tmp_path(tag: &str) -> PathBuf {
-    std::env::temp_dir()
-        .join(format!("koakuma_store_test_{}_{}.json", std::process::id(), tag))
+    std::env::temp_dir().join(format!(
+        "koakuma_store_test_{}_{}.json",
+        std::process::id(),
+        tag
+    ))
 }
 
 fn make_macro(name: &str, enabled: bool) -> Macro {
@@ -26,6 +29,7 @@ fn make_macro(name: &str, enabled: bool) -> Macro {
             title: "t".to_string(),
             body: "b".to_string(),
         }],
+        workflow: None,
         granted_permissions: PermissionSet::default(),
     }
 }
@@ -89,7 +93,10 @@ fn save_does_not_leave_tmp_file() {
     let path = tmp_path("save_no_tmp");
     save_macros(&path, &[make_macro("X", true)]).unwrap();
     let tmp = path.with_extension("json.tmp");
-    assert!(!tmp.exists(), ".tmp file must be removed after atomic rename");
+    assert!(
+        !tmp.exists(),
+        ".tmp file must be removed after atomic rename"
+    );
     let _ = std::fs::remove_file(&path);
 }
 
@@ -218,7 +225,10 @@ fn state_snapshot_contains_all_current_entries() {
     let snap = store.snapshot();
     assert_eq!(snap.len(), 2);
     assert_eq!(snap.get("a").cloned(), Some(Value::Int(1)));
-    assert_eq!(snap.get("b").cloned(), Some(Value::Str("hello".to_string())));
+    assert_eq!(
+        snap.get("b").cloned(),
+        Some(Value::Str("hello".to_string()))
+    );
 }
 
 #[test]

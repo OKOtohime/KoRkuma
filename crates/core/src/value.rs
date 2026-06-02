@@ -1,5 +1,5 @@
-use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 /// The core dynamic value type — decouples domain logic from serde_json and rhai.
 ///

@@ -1,6 +1,6 @@
-use std::path::PathBuf;
-use serde::{Deserialize, Serialize};
 use crate::domain::ActionConfig;
+use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
 /// Restricts a file permission to a specific path, a directory prefix, or any path.
 ///
@@ -45,7 +45,7 @@ pub enum PathScope {
 #[serde(tag = "kind")]
 pub enum Permission {
     InputSimulation,
-    FileRead  { scope: PathScope },
+    FileRead { scope: PathScope },
     FileWrite { scope: PathScope },
     Network,
     RunCommand,
@@ -91,7 +91,9 @@ impl PermissionGrant {
     /// assert!(grant.allows(&Permission::Network));
     /// ```
     pub fn new(permissions: Vec<Permission>) -> Self {
-        Self { granted: permissions }
+        Self {
+            granted: permissions,
+        }
     }
 
     /// Creates a grant from a [`PermissionSet`] stored in a macro definition.
@@ -152,10 +154,10 @@ pub fn aggregate_from_configs(actions: &[ActionConfig]) -> PermissionSet {
     let mut perms: Vec<Permission> = Vec::new();
     for action in actions {
         let required: &[Permission] = match action {
-            ActionConfig::RunCommand { .. }    => &[Permission::RunCommand],
+            ActionConfig::RunCommand { .. } => &[Permission::RunCommand],
             ActionConfig::SimulateInput { .. } => &[Permission::InputSimulation],
-            ActionConfig::RunScript { .. }     => &[Permission::ScriptExecution],
-            ActionConfig::HttpRequest { .. }   => &[Permission::Network],
+            ActionConfig::RunScript { .. } => &[Permission::ScriptExecution],
+            ActionConfig::HttpRequest { .. } => &[Permission::Network],
             _ => &[],
         };
         for p in required {

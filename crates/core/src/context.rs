@@ -1,13 +1,13 @@
-use std::collections::BTreeMap;
-use std::sync::{
-    Arc,
-    atomic::{AtomicBool, Ordering},
-};
 use crate::domain::MacroId;
 use crate::event::Event;
 use crate::permission::PermissionGrant;
 use crate::state::StateStore;
 use crate::value::Value;
+use std::collections::BTreeMap;
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
+};
 
 /// Local variable storage scoped to one macro execution.
 ///
@@ -135,4 +135,51 @@ pub struct ExecContext {
     pub permissions: PermissionGrant,
     pub cancel: CancellationToken,
     pub log: LogHandle,
+}
+
+impl ExecContext {
+    /// Creates an independent context for a concurrent workflow branch.
+    ///
+    /// The fork shares the global state store, cancellation token, permission grant,
+    /// and log handle (all cheaply cloned / reference-counted), but receives its **own
+    /// copy** of the local variables. Local writes in a forked branch therefore do not
+    /// propagate back to the parent — branches only communicate through the shared
+    /// [`StateStore`]. Used by [`WorkflowNode::Parallel`](crate::domain::WorkflowNode::Parallel).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use std::sync::Arc;
+    /// # use koakuma_core::context::{ExecContext, CancellationToken, LogHandle};
+    /// # use koakuma_core::event::{Event, EventKind};
+    /// # use koakuma_core::permission::PermissionGrant;
+    /// # use koakuma_core::state::StateStore;
+    /// # use koakuma_core::value::Value;
+    /// # use koakuma_store::InMemoryStateStore;
+    /// # use std::time::SystemTime;
+    /// let store: Arc<dyn StateStore> = Arc::new(InMemoryStateStore::new());
+    /// let mut ctx = ExecContext {
+    ///     event: Event { kind: EventKind::Manual, source: "t".into(), timestamp: SystemTime::now(), payload: Value::Null },
+    ///     macro_id: uuid::Uuid::nil(),
+    ///     locals: Default::default(),
+    ///     store,
+    ///     permissions: PermissionGrant::new(vec![]),
+    ///     cancel: CancellationToken::new(),
+    ///     log: LogHandle::default(),
+    /// };
+    /// ctx.locals.insert("seed".into(), Value::Int(1));
+    /// let fork = ctx.fork();
+    /// assert_eq!(fork.locals.get("seed"), Some(&Value::Int(1)));
+    /// ```
+    pub fn fork(&self) -> ExecContext {
+        ExecContext {
+            event: self.event.clone(),
+            macro_id: self.macro_id,
+            locals: self.locals.clone(),
+            store: Arc::clone(&self.store),
+            permissions: self.permissions.clone(),
+            cancel: self.cancel.clone(),
+            log: self.log.clone(),
+        }
+    }
 }

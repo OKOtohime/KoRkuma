@@ -1,5 +1,6 @@
 //! [`NotifyAction`] — shows a desktop notification.
 
+use async_trait::async_trait;
 use koakuma_core::context::ExecContext;
 use koakuma_core::domain::ActionConfig;
 use koakuma_core::error::ActionError;
@@ -21,14 +22,17 @@ pub struct NotifyAction {
     body: String,
 }
 
+#[async_trait]
 impl Action for NotifyAction {
-    fn id(&self) -> &'static str { "notify" }
+    fn id(&self) -> &'static str {
+        "notify"
+    }
 
     fn required_permissions(&self) -> PermissionSet {
         PermissionSet::default()
     }
 
-    fn execute(&self, _ctx: &mut ExecContext) -> Result<Outcome, ActionError> {
+    async fn execute(&self, _ctx: &mut ExecContext) -> Result<Outcome, ActionError> {
         notify_rust::Notification::new()
             .summary(&self.title)
             .body(&self.body)

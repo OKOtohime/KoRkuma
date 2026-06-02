@@ -1,8 +1,9 @@
-use crossbeam_channel::Sender;
 use crate::context::{EvalContext, ExecContext};
 use crate::error::{ActionError, ConstraintError, HookError};
 use crate::event::{Event, EventKind};
 use crate::permission::PermissionSet;
+use async_trait::async_trait;
+use crossbeam_channel::Sender;
 
 /// The channel end that HookProviders use to push events into the engine.
 pub type EventSink = Sender<Event>;
@@ -122,14 +123,19 @@ pub enum Outcome {
     Stop,
 }
 
-/// A single executable action step. V1: synchronous. V2: async via Tokio.
+/// A single executable action step. Executed asynchronously on the engine's Tokio runtime (V2).
 ///
 /// Implement this trait to add a new action type. Check
 /// `ctx.permissions.allows(...)` before performing any sensitive operation.
 ///
+/// The trait uses [`macro@async_trait`] so it stays dyn-compatible: the registry stores
+/// actions as `Box<dyn Action>` and the workflow engine awaits `execute`. Implementations
+/// should `.await` on async I/O (timers, network) rather than blocking the runtime.
+///
 /// # Examples
 ///
 /// ```rust,no_run
+/// use async_trait::async_trait;
 /// use koakuma_core::traits::{Action, Outcome};
 /// use koakuma_core::context::ExecContext;
 /// use koakuma_core::error::ActionError;
@@ -137,14 +143,16 @@ pub enum Outcome {
 ///
 /// struct NoOpAction;
 ///
+/// #[async_trait]
 /// impl Action for NoOpAction {
 ///     fn id(&self) -> &'static str { "noop" }
 ///     fn required_permissions(&self) -> PermissionSet { PermissionSet::default() }
-///     fn execute(&self, _ctx: &mut ExecContext) -> Result<Outcome, ActionError> {
+///     async fn execute(&self, _ctx: &mut ExecContext) -> Result<Outcome, ActionError> {
 ///         Ok(Outcome::Continue)
 ///     }
 /// }
 /// ```
+#[async_trait]
 pub trait Action: Send + Sync {
     /// Returns a stable, unique identifier for this action type (e.g. `"run_command"`).
     fn id(&self) -> &'static str;
@@ -156,5 +164,5 @@ pub trait Action: Send + Sync {
     ///
     /// Returns [`ActionError::PermissionDenied`] if a required permission was not granted,
     /// or [`ActionError::Cancelled`] if `ctx.cancel` was signalled before completion.
-    fn execute(&self, ctx: &mut ExecContext) -> Result<Outcome, ActionError>;
+    async fn execute(&self, ctx: &mut ExecContext) -> Result<Outcome, ActionError>;
 }

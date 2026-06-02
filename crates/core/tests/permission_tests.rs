@@ -4,12 +4,13 @@
 /// All tests are zero-platform — no OS APIs are called.
 use std::sync::Arc;
 
+use async_trait::async_trait;
 use koakuma_core::{
     context::ExecContext,
     domain::{ActionConfig, ConstraintExpr, Macro, ScriptLang, TriggerConfig},
     engine::EngineEvent,
     error::ActionError,
-    permission::{aggregate_from_configs, Permission, PermissionSet},
+    permission::{Permission, PermissionSet, aggregate_from_configs},
     registry::Registry,
     router::EventRouter,
     state::StateStore,
@@ -26,7 +27,10 @@ fn aggregate_empty_actions_yields_empty_set() {
 
 #[test]
 fn aggregate_notify_yields_no_permissions() {
-    let actions = [ActionConfig::Notify { title: "T".into(), body: "B".into() }];
+    let actions = [ActionConfig::Notify {
+        title: "T".into(),
+        body: "B".into(),
+    }];
     assert!(aggregate_from_configs(&actions).0.is_empty());
 }
 
@@ -90,19 +94,38 @@ fn aggregate_http_request_yields_network() {
 #[test]
 fn aggregate_deduplicates_repeated_same_action_type() {
     let actions = [
-        ActionConfig::RunCommand { program: "a".into(), args: vec![], capture: false },
-        ActionConfig::RunCommand { program: "b".into(), args: vec![], capture: true },
+        ActionConfig::RunCommand {
+            program: "a".into(),
+            args: vec![],
+            capture: false,
+        },
+        ActionConfig::RunCommand {
+            program: "b".into(),
+            args: vec![],
+            capture: true,
+        },
     ];
     let set = aggregate_from_configs(&actions);
-    assert_eq!(set.0, vec![Permission::RunCommand], "two RunCommand → one permission");
+    assert_eq!(
+        set.0,
+        vec![Permission::RunCommand],
+        "two RunCommand → one permission"
+    );
 }
 
 #[test]
 fn aggregate_collects_multiple_distinct_permissions() {
     let actions = [
-        ActionConfig::RunCommand { program: "a".into(), args: vec![], capture: false },
+        ActionConfig::RunCommand {
+            program: "a".into(),
+            args: vec![],
+            capture: false,
+        },
         ActionConfig::SimulateInput { sequence: vec![] },
-        ActionConfig::Notify { title: "T".into(), body: "B".into() }, // no special permission
+        ActionConfig::Notify {
+            title: "T".into(),
+            body: "B".into(),
+        }, // no special permission
     ];
     let set = aggregate_from_configs(&actions);
     assert_eq!(set.0.len(), 2, "should have exactly 2 distinct permissions");
@@ -117,12 +140,15 @@ struct PermissionedAction {
     ran: Arc<std::sync::atomic::AtomicBool>,
 }
 
+#[async_trait]
 impl Action for PermissionedAction {
-    fn id(&self) -> &'static str { "test_permissioned" }
+    fn id(&self) -> &'static str {
+        "test_permissioned"
+    }
     fn required_permissions(&self) -> PermissionSet {
         PermissionSet(vec![Permission::Network])
     }
-    fn execute(&self, _ctx: &mut ExecContext) -> Result<Outcome, ActionError> {
+    async fn execute(&self, _ctx: &mut ExecContext) -> Result<Outcome, ActionError> {
         self.ran.store(true, std::sync::atomic::Ordering::SeqCst);
         Ok(Outcome::Continue)
     }
@@ -158,12 +184,13 @@ fn permissioned_macro(id: uuid::Uuid, perms: PermissionSet) -> Macro {
             provider: "test_permissioned".into(),
             params: serde_json::Value::Null,
         }],
+        workflow: None,
         granted_permissions: perms,
     }
 }
 
-#[test]
-fn central_check_blocks_action_when_permission_not_granted() {
+#[tokio::test]
+async fn central_check_blocks_action_when_permission_not_granted() {
     let (registry, ran) = make_permissioned_registry();
     let id = uuid::Uuid::new_v4();
     let m = permissioned_macro(id, PermissionSet::default()); // no Network
@@ -172,17 +199,23 @@ fn central_check_blocks_action_when_permission_not_granted() {
     router.add_macro(m);
     let store: Arc<dyn StateStore> = Arc::new(InMemoryStateStore::new());
 
-    let events = router.dispatch_manual_trigger(id, &registry, &store);
+    let events = router.dispatch_manual_trigger(id, &registry, &store).await;
 
-    assert!(!ran.load(std::sync::atomic::Ordering::SeqCst), "action must not run");
+    assert!(
+        !ran.load(std::sync::atomic::Ordering::SeqCst),
+        "action must not run"
+    );
     let has_perm_error = events.iter().any(|e| {
         matches!(e, EngineEvent::Error { message, .. } if message.contains("permission denied"))
     });
-    assert!(has_perm_error, "expected permission denied error; got: {events:?}");
+    assert!(
+        has_perm_error,
+        "expected permission denied error; got: {events:?}"
+    );
 }
 
-#[test]
-fn central_check_allows_action_when_permission_is_granted() {
+#[tokio::test]
+async fn central_check_allows_action_when_permission_is_granted() {
     let (registry, ran) = make_permissioned_registry();
     let id = uuid::Uuid::new_v4();
     let m = permissioned_macro(id, PermissionSet(vec![Permission::Network])); // Network granted
@@ -191,9 +224,14 @@ fn central_check_allows_action_when_permission_is_granted() {
     router.add_macro(m);
     let store: Arc<dyn StateStore> = Arc::new(InMemoryStateStore::new());
 
-    let events = router.dispatch_manual_trigger(id, &registry, &store);
+    let events = router.dispatch_manual_trigger(id, &registry, &store).await;
 
-    assert!(ran.load(std::sync::atomic::Ordering::SeqCst), "action should have run");
-    let has_error = events.iter().any(|e| matches!(e, EngineEvent::Error { .. }));
+    assert!(
+        ran.load(std::sync::atomic::Ordering::SeqCst),
+        "action should have run"
+    );
+    let has_error = events
+        .iter()
+        .any(|e| matches!(e, EngineEvent::Error { .. }));
     assert!(!has_error, "should not produce an error; got: {events:?}");
 }

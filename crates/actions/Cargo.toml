@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 koakuma-core = { workspace = true }
 notify-rust   = "4.17.0"
+async-trait   = { workspace = true }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windows = { version = "0.58", features = [

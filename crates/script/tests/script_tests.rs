@@ -69,20 +69,20 @@ fn expr_constraint(dsl: &str) -> Box<dyn Constraint> {
 
 // ── RunScriptAction — permission gate ─────────────────────────────────────────
 
-#[test]
-fn run_script_without_permission_returns_denied() {
+#[tokio::test]
+async fn run_script_without_permission_returns_denied() {
     let mut ctx = exec_ctx(store(), vec![]); // no ScriptExecution
-    let result = script_action("let x = 1;").execute(&mut ctx);
+    let result = script_action("let x = 1;").execute(&mut ctx).await;
     assert!(
         matches!(result, Err(ActionError::PermissionDenied(_))),
         "expected PermissionDenied, got: {result:?}"
     );
 }
 
-#[test]
-fn run_script_with_permission_succeeds() {
+#[tokio::test]
+async fn run_script_with_permission_succeeds() {
     let mut ctx = exec_ctx(store(), vec![Permission::ScriptExecution]);
-    let result = script_action("let x = 1 + 1;").execute(&mut ctx);
+    let result = script_action("let x = 1 + 1;").execute(&mut ctx).await;
     assert!(
         matches!(result, Ok(Outcome::Continue)),
         "expected Continue, got: {result:?}"
@@ -91,90 +91,104 @@ fn run_script_with_permission_succeeds() {
 
 // ── RunScriptAction — host functions ─────────────────────────────────────────
 
-#[test]
-fn run_script_set_var_writes_int_to_store() {
+#[tokio::test]
+async fn run_script_set_var_writes_int_to_store() {
     let s = store();
     let mut ctx = exec_ctx(Arc::clone(&s), vec![Permission::ScriptExecution]);
-    script_action(r#"set_var("answer", 42)"#).execute(&mut ctx).unwrap();
+    script_action(r#"set_var("answer", 42)"#)
+        .execute(&mut ctx)
+        .await
+        .unwrap();
     assert_eq!(s.get("answer"), Some(Value::Int(42)));
 }
 
-#[test]
-fn run_script_set_var_writes_string_to_store() {
+#[tokio::test]
+async fn run_script_set_var_writes_string_to_store() {
     let s = store();
     let mut ctx = exec_ctx(Arc::clone(&s), vec![Permission::ScriptExecution]);
-    script_action(r#"set_var("mode", "active")"#).execute(&mut ctx).unwrap();
+    script_action(r#"set_var("mode", "active")"#)
+        .execute(&mut ctx)
+        .await
+        .unwrap();
     assert_eq!(s.get("mode"), Some(Value::Str("active".into())));
 }
 
-#[test]
-fn run_script_get_var_reads_existing_value() {
+#[tokio::test]
+async fn run_script_get_var_reads_existing_value() {
     let s = store();
     s.set("counter", Value::Int(7));
     let mut ctx = exec_ctx(Arc::clone(&s), vec![Permission::ScriptExecution]);
     script_action(r#"let v = get_var("counter"); set_var("doubled", v * 2)"#)
         .execute(&mut ctx)
+        .await
         .unwrap();
     assert_eq!(s.get("doubled"), Some(Value::Int(14)));
 }
 
-#[test]
-fn run_script_get_var_missing_key_returns_unit_without_crashing() {
+#[tokio::test]
+async fn run_script_get_var_missing_key_returns_unit_without_crashing() {
     let s = store();
     let mut ctx = exec_ctx(Arc::clone(&s), vec![Permission::ScriptExecution]);
     // Accessing a missing key returns () — script should not panic or error.
     script_action(r#"let v = get_var("no_such_key"); set_var("was_unit", v == ())"#)
         .execute(&mut ctx)
+        .await
         .unwrap();
     assert_eq!(s.get("was_unit"), Some(Value::Bool(true)));
 }
 
-#[test]
-fn run_script_set_var_writes_are_applied_after_script_exits() {
+#[tokio::test]
+async fn run_script_set_var_writes_are_applied_after_script_exits() {
     let s = store();
     let mut ctx = exec_ctx(Arc::clone(&s), vec![Permission::ScriptExecution]);
     // Two set_var calls in sequence — both should appear in the store.
     script_action(r#"set_var("a", 1); set_var("b", 2)"#)
         .execute(&mut ctx)
+        .await
         .unwrap();
     assert_eq!(s.get("a"), Some(Value::Int(1)));
     assert_eq!(s.get("b"), Some(Value::Int(2)));
 }
 
-#[test]
-fn run_script_log_does_not_crash() {
+#[tokio::test]
+async fn run_script_log_does_not_crash() {
     let mut ctx = exec_ctx(store(), vec![Permission::ScriptExecution]);
-    script_action(r#"log("hello from script")"#).execute(&mut ctx).unwrap();
+    script_action(r#"log("hello from script")"#)
+        .execute(&mut ctx)
+        .await
+        .unwrap();
 }
 
 // ── RunScriptAction — error paths ────────────────────────────────────────────
 
-#[test]
-fn run_script_syntax_error_returns_failed() {
+#[tokio::test]
+async fn run_script_syntax_error_returns_failed() {
     let mut ctx = exec_ctx(store(), vec![Permission::ScriptExecution]);
-    let result = script_action("let x = ;").execute(&mut ctx); // bad syntax
+    let result = script_action("let x = ;").execute(&mut ctx).await; // bad syntax
     assert!(
         matches!(result, Err(ActionError::Failed(_))),
         "expected Failed, got: {result:?}"
     );
 }
 
-#[test]
-fn run_script_runtime_error_returns_failed() {
+#[tokio::test]
+async fn run_script_runtime_error_returns_failed() {
     let mut ctx = exec_ctx(store(), vec![Permission::ScriptExecution]);
     // Divide by zero is a runtime error in Rhai.
-    let result = script_action("let x = 1 / 0;").execute(&mut ctx);
+    let result = script_action("let x = 1 / 0;").execute(&mut ctx).await;
     assert!(
         matches!(result, Err(ActionError::Failed(_))),
         "expected Failed for runtime error, got: {result:?}"
     );
 }
 
-#[test]
-fn run_script_infinite_loop_is_terminated_by_max_operations() {
+#[tokio::test]
+async fn run_script_infinite_loop_is_terminated_by_max_operations() {
     let mut ctx = exec_ctx(store(), vec![Permission::ScriptExecution]);
     // This loop will exceed set_max_operations(50_000) and terminate.
-    let result = script_action("loop { let _x = 1 + 1; }").execute(&mut ctx);
+    let result = script_action("loop { let _x = 1 + 1; }")
+        .execute(&mut ctx)
+        .await;
     assert!(
         result.is_err(),
         "infinite loop must fail with resource-limit error"
@@ -187,21 +201,33 @@ fn run_script_infinite_loop_is_terminated_by_max_operations() {
 fn expression_true_literal() {
     let s = InMemoryStateStore::new();
     let event = null_event();
-    assert!(expr_constraint("true").evaluate(&eval_ctx(&event, &s)).unwrap());
+    assert!(
+        expr_constraint("true")
+            .evaluate(&eval_ctx(&event, &s))
+            .unwrap()
+    );
 }
 
 #[test]
 fn expression_false_literal() {
     let s = InMemoryStateStore::new();
     let event = null_event();
-    assert!(!expr_constraint("false").evaluate(&eval_ctx(&event, &s)).unwrap());
+    assert!(
+        !expr_constraint("false")
+            .evaluate(&eval_ctx(&event, &s))
+            .unwrap()
+    );
 }
 
 #[test]
 fn expression_arithmetic_comparison() {
     let s = InMemoryStateStore::new();
     let event = null_event();
-    assert!(expr_constraint("1 + 1 == 2").evaluate(&eval_ctx(&event, &s)).unwrap());
+    assert!(
+        expr_constraint("1 + 1 == 2")
+            .evaluate(&eval_ctx(&event, &s))
+            .unwrap()
+    );
 }
 
 #[test]
@@ -270,8 +296,8 @@ fn expression_infinite_loop_is_terminated_by_max_operations() {
     let s = InMemoryStateStore::new();
     let event = null_event();
     // While loop exceeds set_max_operations(10_000).
-    let result = expr_constraint("let x = 0; while true { x += 1 }; x > 0")
-        .evaluate(&eval_ctx(&event, &s));
+    let result =
+        expr_constraint("let x = 0; while true { x += 1 }; x > 0").evaluate(&eval_ctx(&event, &s));
     assert!(
         result.is_err(),
         "infinite loop in expression must fail with resource-limit error"

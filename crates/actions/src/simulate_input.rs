@@ -4,6 +4,7 @@
 //! `platform_impl` is Windows-only; on other targets the action returns
 //! [`ActionError::Failed`] with a clear message.
 
+use async_trait::async_trait;
 use koakuma_core::context::ExecContext;
 use koakuma_core::domain::{ActionConfig, InputEvent};
 use koakuma_core::error::ActionError;
@@ -23,14 +24,17 @@ pub struct SimulateInputAction {
     sequence: Vec<InputEvent>,
 }
 
+#[async_trait]
 impl Action for SimulateInputAction {
-    fn id(&self) -> &'static str { "simulate_input" }
+    fn id(&self) -> &'static str {
+        "simulate_input"
+    }
 
     fn required_permissions(&self) -> PermissionSet {
         PermissionSet(vec![Permission::InputSimulation])
     }
 
-    fn execute(&self, ctx: &mut ExecContext) -> Result<Outcome, ActionError> {
+    async fn execute(&self, ctx: &mut ExecContext) -> Result<Outcome, ActionError> {
         if !ctx.permissions.allows(&Permission::InputSimulation) {
             return Err(ActionError::PermissionDenied("InputSimulation".to_string()));
         }
@@ -42,7 +46,9 @@ impl Action for SimulateInputAction {
 /// Factory: builds [`SimulateInputAction`] from [`ActionConfig::SimulateInput`].
 pub fn build(c: &ActionConfig) -> Option<Box<dyn Action>> {
     if let ActionConfig::SimulateInput { sequence } = c {
-        Some(Box::new(SimulateInputAction { sequence: sequence.clone() }))
+        Some(Box::new(SimulateInputAction {
+            sequence: sequence.clone(),
+        }))
     } else {
         None
     }
@@ -54,14 +60,13 @@ pub fn build(c: &ActionConfig) -> Option<Box<dyn Action>> {
 mod platform_impl {
     use koakuma_core::domain::InputEvent;
     use windows::Win32::UI::Input::KeyboardAndMouse::{
-        SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, INPUT_MOUSE, KEYBDINPUT, KEYBD_EVENT_FLAGS,
-        KEYEVENTF_KEYUP, KEYEVENTF_UNICODE, MOUSEINPUT, MOUSE_EVENT_FLAGS, MOUSEEVENTF_ABSOLUTE,
+        INPUT, INPUT_0, INPUT_KEYBOARD, INPUT_MOUSE, KEYBD_EVENT_FLAGS, KEYBDINPUT,
+        KEYEVENTF_KEYUP, KEYEVENTF_UNICODE, MOUSE_EVENT_FLAGS, MOUSEEVENTF_ABSOLUTE,
         MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP,
-        MOUSEEVENTF_MOVE, MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP, VIRTUAL_KEY,
+        MOUSEEVENTF_MOVE, MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP, MOUSEINPUT, SendInput,
+        VIRTUAL_KEY,
     };
-    use windows::Win32::UI::WindowsAndMessaging::{
-        GetSystemMetrics, SM_CXSCREEN, SM_CYSCREEN,
-    };
+    use windows::Win32::UI::WindowsAndMessaging::{GetSystemMetrics, SM_CXSCREEN, SM_CYSCREEN};
 
     pub fn send_sequence(sequence: &[InputEvent]) -> Result<(), String> {
         for event in sequence {
@@ -96,7 +101,12 @@ mod platform_impl {
                 // Normalize to [0, 65535] as required by MOUSEEVENTF_ABSOLUTE.
                 let dx = (x * 65535.0 / w as f64).round() as i32;
                 let dy = (y * 65535.0 / h as f64).round() as i32;
-                vec![mouse_input(dx, dy, 0, MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE)]
+                vec![mouse_input(
+                    dx,
+                    dy,
+                    0,
+                    MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE,
+                )]
             }
             InputEvent::MouseClick { button } => {
                 let (down, up) = match button.to_lowercase().as_str() {
@@ -111,8 +121,7 @@ mod platform_impl {
         if inputs.is_empty() {
             return Ok(());
         }
-        let sent =
-            unsafe { SendInput(inputs.as_slice(), std::mem::size_of::<INPUT>() as i32) };
+        let sent = unsafe { SendInput(inputs.as_slice(), std::mem::size_of::<INPUT>() as i32) };
         if sent != inputs.len() as u32 {
             return Err(format!(
                 "SendInput: {sent}/{} events injected (UIPI block?)",
@@ -179,33 +188,42 @@ mod platform_impl {
     fn name_to_vk(key: &str) -> u16 {
         let up = key.to_ascii_uppercase();
         match up.as_str() {
-            "BACKSPACE" | "BS"          => 0x08,
-            "TAB"                       => 0x09,
-            "ENTER" | "RETURN"          => 0x0D,
-            "ESCAPE" | "ESC"            => 0x1B,
-            "SPACE"                     => 0x20,
-            "PAGEUP"                    => 0x21,
-            "PAGEDOWN"                  => 0x22,
-            "END"                       => 0x23,
-            "HOME"                      => 0x24,
-            "LEFT"                      => 0x25,
-            "UP"                        => 0x26,
-            "RIGHT"                     => 0x27,
-            "DOWN"                      => 0x28,
-            "PRINTSCREEN"               => 0x2C,
-            "INSERT"                    => 0x2D,
-            "DELETE" | "DEL"            => 0x2E,
-            "F1"  => 0x70, "F2"  => 0x71, "F3"  => 0x72, "F4"  => 0x73,
-            "F5"  => 0x74, "F6"  => 0x75, "F7"  => 0x76, "F8"  => 0x77,
-            "F9"  => 0x78, "F10" => 0x79, "F11" => 0x7A, "F12" => 0x7B,
-            "CTRL" | "CONTROL" | "LCTRL"  => 0x11,
-            "SHIFT" | "LSHIFT"            => 0x10,
-            "ALT" | "LALT"                => 0x12,
-            "WIN" | "LWIN"                => 0x5B,
-            "RWIN"                        => 0x5C,
-            "RCTRL"                       => 0xA3,
-            "RSHIFT"                      => 0xA1,
-            "RALT"                        => 0xA5,
+            "BACKSPACE" | "BS" => 0x08,
+            "TAB" => 0x09,
+            "ENTER" | "RETURN" => 0x0D,
+            "ESCAPE" | "ESC" => 0x1B,
+            "SPACE" => 0x20,
+            "PAGEUP" => 0x21,
+            "PAGEDOWN" => 0x22,
+            "END" => 0x23,
+            "HOME" => 0x24,
+            "LEFT" => 0x25,
+            "UP" => 0x26,
+            "RIGHT" => 0x27,
+            "DOWN" => 0x28,
+            "PRINTSCREEN" => 0x2C,
+            "INSERT" => 0x2D,
+            "DELETE" | "DEL" => 0x2E,
+            "F1" => 0x70,
+            "F2" => 0x71,
+            "F3" => 0x72,
+            "F4" => 0x73,
+            "F5" => 0x74,
+            "F6" => 0x75,
+            "F7" => 0x76,
+            "F8" => 0x77,
+            "F9" => 0x78,
+            "F10" => 0x79,
+            "F11" => 0x7A,
+            "F12" => 0x7B,
+            "CTRL" | "CONTROL" | "LCTRL" => 0x11,
+            "SHIFT" | "LSHIFT" => 0x10,
+            "ALT" | "LALT" => 0x12,
+            "WIN" | "LWIN" => 0x5B,
+            "RWIN" => 0x5C,
+            "RCTRL" => 0xA3,
+            "RSHIFT" => 0xA1,
+            "RALT" => 0xA5,
             // Single ASCII character (A-Z, 0-9): VK code equals ASCII code point.
             s if s.len() == 1 => s.chars().next().unwrap() as u16,
             _ => 0,

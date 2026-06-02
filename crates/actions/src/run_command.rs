@@ -1,5 +1,6 @@
 //! [`RunCommandAction`] — executes an external process.
 
+use async_trait::async_trait;
 use koakuma_core::context::ExecContext;
 use koakuma_core::domain::ActionConfig;
 use koakuma_core::error::ActionError;
@@ -23,14 +24,17 @@ pub struct RunCommandAction {
     capture: bool,
 }
 
+#[async_trait]
 impl Action for RunCommandAction {
-    fn id(&self) -> &'static str { "run_command" }
+    fn id(&self) -> &'static str {
+        "run_command"
+    }
 
     fn required_permissions(&self) -> PermissionSet {
         PermissionSet(vec![Permission::RunCommand])
     }
 
-    fn execute(&self, ctx: &mut ExecContext) -> Result<Outcome, ActionError> {
+    async fn execute(&self, ctx: &mut ExecContext) -> Result<Outcome, ActionError> {
         if !ctx.permissions.allows(&Permission::RunCommand) {
             return Err(ActionError::PermissionDenied("RunCommand".to_string()));
         }
@@ -71,7 +75,12 @@ impl Action for RunCommandAction {
 
 /// Factory: builds [`RunCommandAction`] from [`ActionConfig::RunCommand`].
 pub fn build(c: &ActionConfig) -> Option<Box<dyn Action>> {
-    if let ActionConfig::RunCommand { program, args, capture } = c {
+    if let ActionConfig::RunCommand {
+        program,
+        args,
+        capture,
+    } = c
+    {
         Some(Box::new(RunCommandAction {
             program: program.clone(),
             args: args.clone(),

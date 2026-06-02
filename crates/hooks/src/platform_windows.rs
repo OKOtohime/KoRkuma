@@ -16,23 +16,22 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::{
-    atomic::{AtomicBool, AtomicU32, Ordering},
     Arc,
+    atomic::{AtomicBool, AtomicU32, Ordering},
 };
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, SystemTime};
 
 use windows::Win32::Foundation::{CloseHandle, HMODULE, HWND, LPARAM, LRESULT, WPARAM};
 use windows::Win32::System::Diagnostics::ToolHelp::{
-    CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W,
-    TH32CS_SNAPPROCESS,
+    CreateToolhelp32Snapshot, PROCESSENTRY32W, Process32FirstW, Process32NextW, TH32CS_SNAPPROCESS,
 };
 use windows::Win32::System::Threading::GetCurrentThreadId;
-use windows::Win32::UI::Accessibility::{SetWinEventHook, UnhookWinEvent, HWINEVENTHOOK};
+use windows::Win32::UI::Accessibility::{HWINEVENTHOOK, SetWinEventHook, UnhookWinEvent};
 use windows::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState;
 use windows::Win32::UI::WindowsAndMessaging::{
-    CallNextHookEx, GetMessageW, GetWindowTextW, PostThreadMessageW, SetWindowsHookExW,
-    UnhookWindowsHookEx, EVENT_SYSTEM_FOREGROUND, HC_ACTION, HHOOK, KBDLLHOOKSTRUCT, MSG,
+    CallNextHookEx, EVENT_SYSTEM_FOREGROUND, GetMessageW, GetWindowTextW, HC_ACTION, HHOOK,
+    KBDLLHOOKSTRUCT, MSG, PostThreadMessageW, SetWindowsHookExW, UnhookWindowsHookEx,
     WH_KEYBOARD_LL, WM_KEYDOWN, WM_QUIT, WM_SYSKEYDOWN,
 };
 
@@ -73,7 +72,8 @@ unsafe extern "system" fn keyboard_hook_proc(
                 if (GetAsyncKeyState(0x12) as u16) & 0x8000 != 0 {
                     modifiers.push(Value::Str("Alt".to_string()));
                 }
-                if ((GetAsyncKeyState(0x5B) as u16) | (GetAsyncKeyState(0x5C) as u16)) & 0x8000 != 0 {
+                if ((GetAsyncKeyState(0x5B) as u16) | (GetAsyncKeyState(0x5C) as u16)) & 0x8000 != 0
+                {
                     modifiers.push(Value::Str("Win".to_string()));
                 }
             }
@@ -132,13 +132,19 @@ impl HotkeyProvider {
 }
 
 impl Default for HotkeyProvider {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl HookProvider for HotkeyProvider {
-    fn id(&self) -> &'static str { "hotkey_win32" }
+    fn id(&self) -> &'static str {
+        "hotkey_win32"
+    }
 
-    fn produces(&self) -> &'static [EventKind] { &[EventKind::Hotkey] }
+    fn produces(&self) -> &'static [EventKind] {
+        &[EventKind::Hotkey]
+    }
 
     fn start(&mut self, sink: EventSink) -> Result<(), HookError> {
         if self.thread.is_some() {
@@ -166,10 +172,14 @@ impl HookProvider for HotkeyProvider {
                 loop {
                     // GetMessageW returns 0 for WM_QUIT, -1 on error.
                     let r = unsafe { GetMessageW(&mut msg, None, 0, 0) };
-                    if r.0 <= 0 { break; }
+                    if r.0 <= 0 {
+                        break;
+                    }
                 }
 
-                unsafe { let _ = UnhookWindowsHookEx(hook); }
+                unsafe {
+                    let _ = UnhookWindowsHookEx(hook);
+                }
                 KB_SINK.with(|c| *c.borrow_mut() = None);
                 thread_id.store(0, Ordering::SeqCst);
             })
@@ -183,7 +193,9 @@ impl HookProvider for HotkeyProvider {
         let tid = self.thread_id.load(Ordering::SeqCst);
         if tid != 0 {
             // Post WM_QUIT to break the hook thread's GetMessage loop.
-            unsafe { let _ = PostThreadMessageW(tid, WM_QUIT, WPARAM(0), LPARAM(0)); }
+            unsafe {
+                let _ = PostThreadMessageW(tid, WM_QUIT, WPARAM(0), LPARAM(0));
+            }
         }
         if let Some(t) = self.thread.take() {
             let _ = t.join();
@@ -264,13 +276,19 @@ impl WindowFocusProvider {
 }
 
 impl Default for WindowFocusProvider {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl HookProvider for WindowFocusProvider {
-    fn id(&self) -> &'static str { "window_focus_win32" }
+    fn id(&self) -> &'static str {
+        "window_focus_win32"
+    }
 
-    fn produces(&self) -> &'static [EventKind] { &[EventKind::WindowFocus] }
+    fn produces(&self) -> &'static [EventKind] {
+        &[EventKind::WindowFocus]
+    }
 
     fn start(&mut self, sink: EventSink) -> Result<(), HookError> {
         if self.thread.is_some() {
@@ -304,10 +322,14 @@ impl HookProvider for WindowFocusProvider {
                 let mut msg = MSG::default();
                 loop {
                     let r = unsafe { GetMessageW(&mut msg, None, 0, 0) };
-                    if r.0 <= 0 { break; }
+                    if r.0 <= 0 {
+                        break;
+                    }
                 }
 
-                unsafe { let _ = UnhookWinEvent(hook); }
+                unsafe {
+                    let _ = UnhookWinEvent(hook);
+                }
                 WF_SINK.with(|c| *c.borrow_mut() = None);
                 thread_id.store(0, Ordering::SeqCst);
             })
@@ -320,7 +342,9 @@ impl HookProvider for WindowFocusProvider {
     fn stop(&mut self) {
         let tid = self.thread_id.load(Ordering::SeqCst);
         if tid != 0 {
-            unsafe { let _ = PostThreadMessageW(tid, WM_QUIT, WPARAM(0), LPARAM(0)); }
+            unsafe {
+                let _ = PostThreadMessageW(tid, WM_QUIT, WPARAM(0), LPARAM(0));
+            }
         }
         if let Some(t) = self.thread.take() {
             let _ = t.join();
@@ -356,7 +380,9 @@ fn snapshot_processes() -> HashMap<u32, String> {
             }
         }
     }
-    unsafe { let _ = CloseHandle(snap); }
+    unsafe {
+        let _ = CloseHandle(snap);
+    }
     map
 }
 
@@ -400,13 +426,19 @@ impl ProcessProvider {
 }
 
 impl Default for ProcessProvider {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl HookProvider for ProcessProvider {
-    fn id(&self) -> &'static str { "process_win32" }
+    fn id(&self) -> &'static str {
+        "process_win32"
+    }
 
-    fn produces(&self) -> &'static [EventKind] { &[EventKind::Process] }
+    fn produces(&self) -> &'static [EventKind] {
+        &[EventKind::Process]
+    }
 
     fn start(&mut self, sink: EventSink) -> Result<(), HookError> {
         if self.running.load(Ordering::SeqCst) {

@@ -1,5 +1,5 @@
-use std::time::SystemTime;
 use crate::value::Value;
+use std::time::SystemTime;
 
 /// Coarse-grained event category used as the primary routing key in [`router::EventRouter`].
 ///

@@ -1,7 +1,7 @@
-use std::path::PathBuf;
-use serde::{Deserialize, Serialize};
 use crate::permission::PermissionSet;
 use crate::value::Value;
+use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
 /// Unique identifier for a [`Macro`], backed by a UUID v4.
 ///
@@ -125,10 +125,10 @@ pub enum ScriptLang {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum InputEvent {
-    KeyPress   { key: String },
+    KeyPress { key: String },
     KeyRelease { key: String },
-    Text       { text: String },
-    MouseMove  { x: f64, y: f64 },
+    Text { text: String },
+    MouseMove { x: f64, y: f64 },
     MouseClick { button: String },
 }
 
@@ -156,13 +156,29 @@ pub type ValueTemplate = Value;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum TriggerConfig {
-    Hotkey      { keys: Vec<KeyCombo> },
-    WindowFocus { title_pattern: String, regex: bool },
-    Process     { name: String, event: ProcessEvent },
-    Schedule    { cron: String },
-    FileChange  { path: PathBuf, kind: FsEventKind },
+    Hotkey {
+        keys: Vec<KeyCombo>,
+    },
+    WindowFocus {
+        title_pattern: String,
+        regex: bool,
+    },
+    Process {
+        name: String,
+        event: ProcessEvent,
+    },
+    Schedule {
+        cron: String,
+    },
+    FileChange {
+        path: PathBuf,
+        kind: FsEventKind,
+    },
     Manual,
-    Custom      { provider: String, params: serde_json::Value },
+    Custom {
+        provider: String,
+        params: serde_json::Value,
+    },
 }
 
 /// Serializable description of a macro action step.
@@ -186,14 +202,39 @@ pub enum TriggerConfig {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum ActionConfig {
-    RunCommand    { program: String, args: Vec<String>, capture: bool },
-    Notify        { title: String, body: String },
-    SimulateInput { sequence: Vec<InputEvent> },
-    HttpRequest   { method: String, url: String, body: Option<String> },
-    SetVariable   { scope: VarScope, key: String, value: ValueTemplate },
-    Delay         { millis: u64 },
-    RunScript     { lang: ScriptLang, source: String },
-    Custom        { provider: String, params: serde_json::Value },
+    RunCommand {
+        program: String,
+        args: Vec<String>,
+        capture: bool,
+    },
+    Notify {
+        title: String,
+        body: String,
+    },
+    SimulateInput {
+        sequence: Vec<InputEvent>,
+    },
+    HttpRequest {
+        method: String,
+        url: String,
+        body: Option<String>,
+    },
+    SetVariable {
+        scope: VarScope,
+        key: String,
+        value: ValueTemplate,
+    },
+    Delay {
+        millis: u64,
+    },
+    RunScript {
+        lang: ScriptLang,
+        source: String,
+    },
+    Custom {
+        provider: String,
+        params: serde_json::Value,
+    },
 }
 
 /// Serializable description of a single constraint leaf node.
@@ -215,11 +256,26 @@ pub enum ActionConfig {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum ConstraintConfig {
-    ActiveWindow { title_pattern: String, regex: bool },
-    TimeRange    { from: String, to: String },
-    VarCompare   { key: String, op: CompareOp, value: Value },
-    Expression   { dsl: String },
-    Custom       { provider: String, params: serde_json::Value },
+    ActiveWindow {
+        title_pattern: String,
+        regex: bool,
+    },
+    TimeRange {
+        from: String,
+        to: String,
+    },
+    VarCompare {
+        key: String,
+        op: CompareOp,
+        value: Value,
+    },
+    Expression {
+        dsl: String,
+    },
+    Custom {
+        provider: String,
+        params: serde_json::Value,
+    },
 }
 
 /// Boolean expression tree for the Constraint leg of a Macro.
@@ -229,9 +285,9 @@ pub enum ConstraintConfig {
 pub enum ConstraintExpr {
     Always,
     Leaf { constraint: ConstraintConfig },
-    Not  { expr: Box<ConstraintExpr> },
-    All  { exprs: Vec<ConstraintExpr> },
-    Any  { exprs: Vec<ConstraintExpr> },
+    Not { expr: Box<ConstraintExpr> },
+    All { exprs: Vec<ConstraintExpr> },
+    Any { exprs: Vec<ConstraintExpr> },
 }
 
 impl ConstraintExpr {
@@ -290,6 +346,103 @@ impl ConstraintExpr {
     }
 }
 
+/// Condition a [`WorkflowNode::Wait`] node blocks on before resuming.
+///
+/// V2 (M2.1) implements [`WaitCondition::Duration`]. Event- and variable-predicate
+/// waits are planned for the M2.2 scheduler, which owns event subscription.
+///
+/// # Examples
+///
+/// ```rust
+/// use koakuma_core::domain::WaitCondition;
+///
+/// let w = WaitCondition::Duration { millis: 250 };
+/// assert!(matches!(w, WaitCondition::Duration { millis: 250 }));
+/// ```
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum WaitCondition {
+    /// Sleep for a fixed number of milliseconds.
+    Duration { millis: u64 },
+}
+
+/// A node in the executable workflow tree — the Action leg of the macro, with control flow.
+///
+/// V2 replaces the flat `Vec<ActionConfig>` of V1 with this recursive tree, driven
+/// asynchronously by [`workflow::run_workflow`](crate::workflow::run_workflow). A macro
+/// without an explicit `workflow` is treated as a [`Seq`](WorkflowNode::Seq) of its
+/// `actions` (see [`Macro::root_workflow`]), so old configurations keep working unchanged.
+///
+/// # Control-flow semantics
+///
+/// - [`Seq`](WorkflowNode::Seq) — run children in order; stop on the first that halts or fails.
+/// - [`Parallel`](WorkflowNode::Parallel) — run children concurrently, each with a forked
+///   context (local variables are isolated; the global store is shared).
+/// - [`If`](WorkflowNode::If) / [`While`](WorkflowNode::While) — gated by a [`ConstraintExpr`].
+/// - [`ForEach`](WorkflowNode::ForEach) — iterate a literal [`Value::List`],
+///   binding each element to a local variable.
+/// - [`Retry`](WorkflowNode::Retry) — re-run a child up to `times` attempts on failure.
+/// - [`Timeout`](WorkflowNode::Timeout) — fail a child if it does not finish in `millis`.
+/// - [`Wait`](WorkflowNode::Wait) — block on a [`WaitCondition`].
+///
+/// # Examples
+///
+/// ```rust
+/// use koakuma_core::domain::{WorkflowNode, ActionConfig};
+///
+/// let wf = WorkflowNode::Seq(vec![
+///     WorkflowNode::Action(ActionConfig::Delay { millis: 100 }),
+///     WorkflowNode::Action(ActionConfig::Notify {
+///         title: "Done".into(),
+///         body: "Finished".into(),
+///     }),
+/// ]);
+/// assert!(matches!(wf, WorkflowNode::Seq(_)));
+/// ```
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(tag = "node")]
+pub enum WorkflowNode {
+    /// A single leaf action.
+    Action(ActionConfig),
+    /// Run children sequentially; halt on the first Stop or failure.
+    Seq(Vec<WorkflowNode>),
+    /// Run children concurrently (each gets a forked execution context).
+    Parallel(Vec<WorkflowNode>),
+    /// Run `then` when `cond` is true, otherwise `otherwise` (if present).
+    If {
+        cond: ConstraintExpr,
+        then: Box<WorkflowNode>,
+        #[serde(default)]
+        otherwise: Option<Box<WorkflowNode>>,
+    },
+    /// Repeat `body` while `cond` holds, bounded by `max_iter` iterations.
+    While {
+        cond: ConstraintExpr,
+        body: Box<WorkflowNode>,
+        max_iter: u32,
+    },
+    /// Bind each element of the literal list `items` to local `var` and run `body`.
+    ForEach {
+        items: ValueTemplate,
+        var: String,
+        body: Box<WorkflowNode>,
+    },
+    /// Re-run `body` up to `times` attempts on failure, sleeping `backoff_ms` between tries.
+    Retry {
+        body: Box<WorkflowNode>,
+        times: u32,
+        #[serde(default)]
+        backoff_ms: u64,
+    },
+    /// Fail `body` if it does not complete within `millis` milliseconds.
+    Timeout {
+        body: Box<WorkflowNode>,
+        millis: u64,
+    },
+    /// Block until `until` is satisfied.
+    Wait { until: WaitCondition },
+}
+
 /// The core three-tuple (Hook + Constraint + Action). Serializable, diffable, shareable.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Macro {
@@ -301,7 +454,52 @@ pub struct Macro {
     /// OR semantics: any trigger fires evaluation.
     pub triggers: Vec<TriggerConfig>,
     pub constraints: ConstraintExpr,
-    /// V1: sequential execution.
+    /// Flat action list (V1). Used as the fallback workflow when `workflow` is `None`.
     pub actions: Vec<ActionConfig>,
+    /// Optional V2 control-flow workflow tree. When present it takes precedence over
+    /// `actions`. Absent in V1 configs; `#[serde(default)]` keeps them loadable.
+    #[serde(default)]
+    pub workflow: Option<WorkflowNode>,
     pub granted_permissions: PermissionSet,
+}
+
+impl Macro {
+    /// Returns the root [`WorkflowNode`] to execute for this macro.
+    ///
+    /// If an explicit [`workflow`](Macro::workflow) is set it is returned as-is;
+    /// otherwise the flat [`actions`](Macro::actions) list is wrapped in a
+    /// [`WorkflowNode::Seq`], giving V1 configurations identical sequential semantics.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use koakuma_core::domain::{Macro, ConstraintExpr, TriggerConfig, ActionConfig, WorkflowNode};
+    /// use koakuma_core::permission::PermissionSet;
+    ///
+    /// let m = Macro {
+    ///     id: uuid::Uuid::nil(),
+    ///     name: "m".into(),
+    ///     description: String::new(),
+    ///     enabled: true,
+    ///     category: None,
+    ///     triggers: vec![TriggerConfig::Manual],
+    ///     constraints: ConstraintExpr::Always,
+    ///     actions: vec![ActionConfig::Delay { millis: 0 }],
+    ///     workflow: None,
+    ///     granted_permissions: PermissionSet::default(),
+    /// };
+    /// assert!(matches!(m.root_workflow(), WorkflowNode::Seq(v) if v.len() == 1));
+    /// ```
+    pub fn root_workflow(&self) -> WorkflowNode {
+        match &self.workflow {
+            Some(w) => w.clone(),
+            None => WorkflowNode::Seq(
+                self.actions
+                    .iter()
+                    .cloned()
+                    .map(WorkflowNode::Action)
+                    .collect(),
+            ),
+        }
+    }
 }

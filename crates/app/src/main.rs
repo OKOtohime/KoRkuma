@@ -1,12 +1,13 @@
 slint::include_modules!();
 
 use std::rc::Rc;
-use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 
-use slint::{Model, ModelRc, VecModel};
 use notify::{EventKind, RecursiveMode, Watcher};
+use slint::{Model, ModelRc, VecModel};
 
+use koakuma_actions::register_all as register_actions;
 use koakuma_core::{
     domain::{ActionConfig, ConstraintExpr, Macro, TriggerConfig},
     engine::{EngineCommand, EngineEvent, LogLevel},
@@ -14,10 +15,12 @@ use koakuma_core::{
     permission::aggregate_from_configs,
     state::StateStore,
 };
-use koakuma_store::{load_macros, save_macros, InMemoryStateStore};
 use koakuma_hooks::register_trigger_specs;
-use koakuma_actions::register_all as register_actions;
-use koakuma_script::{register_actions as register_script_actions, register_constraints as register_script_constraints};
+use koakuma_script::{
+    register_actions as register_script_actions,
+    register_constraints as register_script_constraints,
+};
+use koakuma_store::{InMemoryStateStore, load_macros, save_macros};
 
 const MACROS_PATH: &str = "macros.json";
 
@@ -48,7 +51,9 @@ fn main() -> Result<(), slint::PlatformError> {
         Err(e) if backend == "winit-femtovg" => {
             eprintln!("[koakuma] femtovg init failed ({e}); falling back to software renderer");
             // SAFETY: engine thread not yet spawned; Slint platform not yet committed.
-            unsafe { std::env::set_var("SLINT_BACKEND", "winit-software"); }
+            unsafe {
+                std::env::set_var("SLINT_BACKEND", "winit-software");
+            }
             MainWindow::new()?
         }
         Err(e) => return Err(e),
@@ -65,26 +70,27 @@ fn main() -> Result<(), slint::PlatformError> {
     let local_macros: Arc<Mutex<Vec<Macro>>> = Arc::new(Mutex::new(Vec::new()));
 
     // ── 4. Start engine ───────────────────────────────────────────────────────
-    let (engine, _event_sink) = start_engine(
-        Arc::clone(&registry),
-        Arc::clone(&store),
-        {
-            let ui_weak = ui_weak.clone();
-            move |ev| {
-                let msg = format_engine_event(&ev);
-                // Cross-thread: schedule a model update on the main (UI) thread.
-                let _ = ui_weak.upgrade_in_event_loop(move |ui| {
-                    let model_rc = ui.get_logs();
-                    if let Some(model) = model_rc.as_any().downcast_ref::<VecModel<LogEntry>>() {
-                        model.insert(0, LogEntry { message: msg.into() });
-                        while model.row_count() > 500 {
-                            model.remove(model.row_count() - 1);
-                        }
+    let (engine, _event_sink) = start_engine(Arc::clone(&registry), Arc::clone(&store), {
+        let ui_weak = ui_weak.clone();
+        move |ev| {
+            let msg = format_engine_event(&ev);
+            // Cross-thread: schedule a model update on the main (UI) thread.
+            let _ = ui_weak.upgrade_in_event_loop(move |ui| {
+                let model_rc = ui.get_logs();
+                if let Some(model) = model_rc.as_any().downcast_ref::<VecModel<LogEntry>>() {
+                    model.insert(
+                        0,
+                        LogEntry {
+                            message: msg.into(),
+                        },
+                    );
+                    while model.row_count() > 500 {
+                        model.remove(model.row_count() - 1);
                     }
-                });
-            }
-        },
-    );
+                }
+            });
+        }
+    });
 
     let engine_sender = engine.clone_sender();
 
@@ -95,7 +101,10 @@ fn main() -> Result<(), slint::PlatformError> {
     // ── 6. Load macros from macros.json ───────────────────────────────────────
     match load_macros(std::path::Path::new(MACROS_PATH)) {
         Ok(loaded) => {
-            println!("[koakuma] loaded {} macro(s) from {MACROS_PATH}", loaded.len());
+            println!(
+                "[koakuma] loaded {} macro(s) from {MACROS_PATH}",
+                loaded.len()
+            );
             let mut guard = local_macros.lock().unwrap();
             for m in loaded {
                 macros_model.push(MacroItem {
@@ -200,7 +209,9 @@ fn main() -> Result<(), slint::PlatformError> {
                 }
             };
             if let Some(id) = macro_id {
-                engine_sender.send(EngineCommand::SetEnabled(id, enabled)).ok();
+                engine_sender
+                    .send(EngineCommand::SetEnabled(id, enabled))
+                    .ok();
                 if let Some(row) = macros_model.row_data(idx) {
                     macros_model.set_row_data(idx, MacroItem { enabled, ..row });
                 }
@@ -232,7 +243,9 @@ fn main() -> Result<(), slint::PlatformError> {
         let local_macros = Arc::clone(&local_macros);
         let ui_weak = ui_weak.clone();
         ui.on_macro_selected(move |idx| {
-            if idx < 0 { return; }
+            if idx < 0 {
+                return;
+            }
             if let Some(ui) = ui_weak.upgrade() {
                 let list = local_macros.lock().unwrap();
                 refresh_editor(&ui, &list, idx as usize);
@@ -272,8 +285,7 @@ fn spawn_file_watcher(
     suppress_reload: Arc<AtomicBool>,
 ) -> notify::RecommendedWatcher {
     let (tx, rx) = std::sync::mpsc::channel::<notify::Result<notify::Event>>();
-    let mut watcher =
-        notify::recommended_watcher(tx).expect("failed to create file watcher");
+    let mut watcher = notify::recommended_watcher(tx).expect("failed to create file watcher");
     watcher
         .watch(std::path::Path::new("."), RecursiveMode::NonRecursive)
         .expect("failed to watch current directory");
@@ -282,14 +294,20 @@ fn spawn_file_watcher(
         for res in rx {
             let event = match res {
                 Ok(e) => e,
-                Err(e) => { eprintln!("[koakuma] watcher error: {e}"); continue; }
+                Err(e) => {
+                    eprintln!("[koakuma] watcher error: {e}");
+                    continue;
+                }
             };
 
             // Only react to events whose path is exactly macros.json (not .tmp).
-            let is_macros_json = event.paths.iter().any(|p| {
-                p.file_name().and_then(|n| n.to_str()) == Some(MACROS_PATH)
-            });
-            if !is_macros_json { continue; }
+            let is_macros_json = event
+                .paths
+                .iter()
+                .any(|p| p.file_name().and_then(|n| n.to_str()) == Some(MACROS_PATH));
+            if !is_macros_json {
+                continue;
+            }
 
             // Only react to create/modify events (including rename-to from atomic write).
             match event.kind {
@@ -314,7 +332,9 @@ fn spawn_file_watcher(
 
                         for m in &new_macros {
                             if old_ids.contains(&m.id) {
-                                engine_sender.send(EngineCommand::UpdateMacro(m.clone())).ok();
+                                engine_sender
+                                    .send(EngineCommand::UpdateMacro(m.clone()))
+                                    .ok();
                             } else {
                                 engine_sender.send(EngineCommand::AddMacro(m.clone())).ok();
                             }
@@ -340,7 +360,12 @@ fn spawn_file_watcher(
                     let _ = ui_weak.upgrade_in_event_loop(move |ui| {
                         let logs_rc = ui.get_logs();
                         if let Some(logs) = logs_rc.as_any().downcast_ref::<VecModel<LogEntry>>() {
-                            logs.insert(0, LogEntry { message: msg.into() });
+                            logs.insert(
+                                0,
+                                LogEntry {
+                                    message: msg.into(),
+                                },
+                            );
                         }
                     });
                 }
@@ -380,8 +405,16 @@ fn reload_ui_model(ui: &MainWindow, macros: &[Macro]) {
 
     let logs_rc = ui.get_logs();
     if let Some(logs) = logs_rc.as_any().downcast_ref::<VecModel<LogEntry>>() {
-        let msg = format!("[INF] hot-reloaded {} macro(s) from {MACROS_PATH}", macros.len());
-        logs.insert(0, LogEntry { message: msg.into() });
+        let msg = format!(
+            "[INF] hot-reloaded {} macro(s) from {MACROS_PATH}",
+            macros.len()
+        );
+        logs.insert(
+            0,
+            LogEntry {
+                message: msg.into(),
+            },
+        );
         while logs.row_count() > 500 {
             logs.remove(logs.row_count() - 1);
         }
@@ -406,13 +439,19 @@ fn persist(macros: &[Macro], suppress_reload: &AtomicBool) {
 fn refresh_editor(ui: &MainWindow, macros: &[Macro], idx: usize) {
     if let Some(m) = macros.get(idx) {
         ui.set_selected_triggers(
-            serde_json::to_string_pretty(&m.triggers).unwrap_or_default().into(),
+            serde_json::to_string_pretty(&m.triggers)
+                .unwrap_or_default()
+                .into(),
         );
         ui.set_selected_constraints(
-            serde_json::to_string_pretty(&m.constraints).unwrap_or_default().into(),
+            serde_json::to_string_pretty(&m.constraints)
+                .unwrap_or_default()
+                .into(),
         );
         ui.set_selected_actions(
-            serde_json::to_string_pretty(&m.actions).unwrap_or_default().into(),
+            serde_json::to_string_pretty(&m.actions)
+                .unwrap_or_default()
+                .into(),
         );
     }
 }
@@ -423,11 +462,16 @@ fn format_engine_event(ev: &EngineEvent) -> String {
         EngineEvent::MacroFired { name, id, .. } => {
             format!("[FIRED] \"{name}\" ({})", &id.to_string()[..8])
         }
-        EngineEvent::ActionLog { action, level, message, .. } => {
+        EngineEvent::ActionLog {
+            action,
+            level,
+            message,
+            ..
+        } => {
             let prefix = match level {
                 LogLevel::Error => "ERR",
-                LogLevel::Warn  => "WRN",
-                LogLevel::Info  => "INF",
+                LogLevel::Warn => "WRN",
+                LogLevel::Info => "INF",
                 LogLevel::Debug => "DBG",
             };
             format!("[{prefix}] [{action}] {message}")
@@ -437,7 +481,7 @@ fn format_engine_event(ev: &EngineEvent) -> String {
         }
         EngineEvent::Error { macro_id, message } => match macro_id {
             Some(id) => format!("[ERR] ({}) {message}", &id.to_string()[..8]),
-            None     => format!("[ERR] {message}"),
+            None => format!("[ERR] {message}"),
         },
     }
 }
@@ -461,6 +505,7 @@ fn create_default_macro() -> Macro {
         triggers: vec![TriggerConfig::Manual],
         constraints: ConstraintExpr::Always,
         actions,
+        workflow: None,
         granted_permissions,
     }
 }
@@ -476,10 +521,16 @@ fn select_backend() -> &'static str {
     if std::env::var("SLINT_BACKEND").is_ok() {
         return "custom (SLINT_BACKEND env)";
     }
-    let backend = if hardware_gl_available() { "winit-femtovg" } else { "winit-software" };
+    let backend = if hardware_gl_available() {
+        "winit-femtovg"
+    } else {
+        "winit-software"
+    };
     // SAFETY: called before Slint initialisation and before spawning any threads
     // that could concurrently read the environment.
-    unsafe { std::env::set_var("SLINT_BACKEND", backend); }
+    unsafe {
+        std::env::set_var("SLINT_BACKEND", backend);
+    }
     backend
 }
 

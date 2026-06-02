@@ -1,6 +1,6 @@
-use std::time::SystemTime;
 use crate::domain::{Macro, MacroId};
 use crate::value::Value;
+use std::time::SystemTime;
 
 /// Log severity level for action execution messages emitted via [`EngineEvent::ActionLog`].
 ///
@@ -36,10 +36,25 @@ pub enum EngineCommand {
 /// `slint::invoke_from_event_loop` / `Weak::upgrade_in_event_loop`.
 #[derive(Debug)]
 pub enum EngineEvent {
-    MacroFired      { id: MacroId, name: String, at: SystemTime },
-    ActionLog       { macro_id: MacroId, action: String, level: LogLevel, message: String },
-    VariableChanged { key: String, value: Value },
-    Error           { macro_id: Option<MacroId>, message: String },
+    MacroFired {
+        id: MacroId,
+        name: String,
+        at: SystemTime,
+    },
+    ActionLog {
+        macro_id: MacroId,
+        action: String,
+        level: LogLevel,
+        message: String,
+    },
+    VariableChanged {
+        key: String,
+        value: Value,
+    },
+    Error {
+        macro_id: Option<MacroId>,
+        message: String,
+    },
 }
 
 /// A point-in-time snapshot of the engine state, returned by [`EngineCommand::QuerySnapshot`].

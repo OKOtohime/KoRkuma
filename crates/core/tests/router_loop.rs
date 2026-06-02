@@ -5,6 +5,7 @@
 use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 
+use async_trait::async_trait;
 use koakuma_core::{
     context::ExecContext,
     domain::{ActionConfig, ConstraintExpr, Macro, TriggerConfig, VarScope},
@@ -24,20 +25,25 @@ use koakuma_store::InMemoryStateStore;
 
 fn manual_event() -> Event {
     Event {
-        kind:      EventKind::Manual,
-        source:    "test".into(),
+        kind: EventKind::Manual,
+        source: "test".into(),
         timestamp: SystemTime::now(),
-        payload:   Value::Null,
+        payload: Value::Null,
     }
 }
 
 /// Counts how many times the action was executed.
 struct CountingAction(Arc<Mutex<u32>>);
 
+#[async_trait]
 impl Action for CountingAction {
-    fn id(&self) -> &'static str { "counting" }
-    fn required_permissions(&self) -> PermissionSet { PermissionSet::default() }
-    fn execute(&self, _ctx: &mut ExecContext) -> Result<Outcome, ActionError> {
+    fn id(&self) -> &'static str {
+        "counting"
+    }
+    fn required_permissions(&self) -> PermissionSet {
+        PermissionSet::default()
+    }
+    async fn execute(&self, _ctx: &mut ExecContext) -> Result<Outcome, ActionError> {
         *self.0.lock().unwrap() += 1;
         Ok(Outcome::Continue)
     }
@@ -45,10 +51,15 @@ impl Action for CountingAction {
 
 /// Stops after first call.
 struct StopAction;
+#[async_trait]
 impl Action for StopAction {
-    fn id(&self) -> &'static str { "stop" }
-    fn required_permissions(&self) -> PermissionSet { PermissionSet::default() }
-    fn execute(&self, _ctx: &mut ExecContext) -> Result<Outcome, ActionError> {
+    fn id(&self) -> &'static str {
+        "stop"
+    }
+    fn required_permissions(&self) -> PermissionSet {
+        PermissionSet::default()
+    }
+    async fn execute(&self, _ctx: &mut ExecContext) -> Result<Outcome, ActionError> {
         Ok(Outcome::Stop)
     }
 }
@@ -80,14 +91,15 @@ fn make_macro(
         triggers,
         constraints,
         actions,
+        workflow: None,
         granted_permissions: PermissionSet::default(),
     }
 }
 
 // ── core pipeline ──────────────────────────────────────────────────────────
 
-#[test]
-fn manual_trigger_always_fires_action() {
+#[tokio::test]
+async fn manual_trigger_always_fires_action() {
     let counter = Arc::new(Mutex::new(0u32));
     let mut registry = Registry::with_builtins();
     register_counting(&mut registry, Arc::clone(&counter), "counting_a");
@@ -98,23 +110,28 @@ fn manual_trigger_always_fires_action() {
         uuid::Uuid::new_v4(),
         vec![TriggerConfig::Manual],
         ConstraintExpr::Always,
-        vec![ActionConfig::Custom { provider: "counting_a".into(), params: serde_json::Value::Null }],
+        vec![ActionConfig::Custom {
+            provider: "counting_a".into(),
+            params: serde_json::Value::Null,
+        }],
         true,
     );
     let mut router = EventRouter::new();
     router.add_macro(m.clone());
 
-    let events = router.dispatch(&manual_event(), &registry, &store);
+    let events = router.dispatch(&manual_event(), &registry, &store).await;
 
     assert!(
-        events.iter().any(|e| matches!(e, EngineEvent::MacroFired { id, .. } if *id == m.id)),
+        events
+            .iter()
+            .any(|e| matches!(e, EngineEvent::MacroFired { id, .. } if *id == m.id)),
         "expected MacroFired"
     );
     assert_eq!(*counter.lock().unwrap(), 1, "action should run once");
 }
 
-#[test]
-fn macro_fires_only_for_its_event_kind() {
+#[tokio::test]
+async fn macro_fires_only_for_its_event_kind() {
     let counter = Arc::new(Mutex::new(0u32));
     let mut registry = Registry::with_builtins();
     register_counting(&mut registry, Arc::clone(&counter), "kind_check");
@@ -126,7 +143,10 @@ fn macro_fires_only_for_its_event_kind() {
         uuid::Uuid::new_v4(),
         vec![TriggerConfig::Manual],
         ConstraintExpr::Always,
-        vec![ActionConfig::Custom { provider: "kind_check".into(), params: serde_json::Value::Null }],
+        vec![ActionConfig::Custom {
+            provider: "kind_check".into(),
+            params: serde_json::Value::Null,
+        }],
         true,
     );
     let mut router = EventRouter::new();
@@ -139,7 +159,7 @@ fn macro_fires_only_for_its_event_kind() {
         timestamp: SystemTime::now(),
         payload: Value::Null,
     };
-    let events = router.dispatch(&hotkey_event, &registry, &store);
+    let events = router.dispatch(&hotkey_event, &registry, &store).await;
 
     assert!(events.is_empty(), "no events for wrong kind");
     assert_eq!(*counter.lock().unwrap(), 0);
@@ -147,8 +167,8 @@ fn macro_fires_only_for_its_event_kind() {
 
 // ── disabled macro ─────────────────────────────────────────────────────────
 
-#[test]
-fn disabled_macro_does_not_fire() {
+#[tokio::test]
+async fn disabled_macro_does_not_fire() {
     let counter = Arc::new(Mutex::new(0u32));
     let mut registry = Registry::with_builtins();
     register_counting(&mut registry, Arc::clone(&counter), "disabled_check");
@@ -159,20 +179,23 @@ fn disabled_macro_does_not_fire() {
         uuid::Uuid::new_v4(),
         vec![TriggerConfig::Manual],
         ConstraintExpr::Always,
-        vec![ActionConfig::Custom { provider: "disabled_check".into(), params: serde_json::Value::Null }],
+        vec![ActionConfig::Custom {
+            provider: "disabled_check".into(),
+            params: serde_json::Value::Null,
+        }],
         false, // disabled
     );
     let mut router = EventRouter::new();
     router.add_macro(m);
 
-    let events = router.dispatch(&manual_event(), &registry, &store);
+    let events = router.dispatch(&manual_event(), &registry, &store).await;
 
     assert!(events.is_empty());
     assert_eq!(*counter.lock().unwrap(), 0);
 }
 
-#[test]
-fn set_enabled_toggles_firing() {
+#[tokio::test]
+async fn set_enabled_toggles_firing() {
     let counter = Arc::new(Mutex::new(0u32));
     let mut registry = Registry::with_builtins();
     register_counting(&mut registry, Arc::clone(&counter), "toggle_check");
@@ -184,26 +207,29 @@ fn set_enabled_toggles_firing() {
         id,
         vec![TriggerConfig::Manual],
         ConstraintExpr::Always,
-        vec![ActionConfig::Custom { provider: "toggle_check".into(), params: serde_json::Value::Null }],
+        vec![ActionConfig::Custom {
+            provider: "toggle_check".into(),
+            params: serde_json::Value::Null,
+        }],
         false, // starts disabled
     );
     let mut router = EventRouter::new();
     router.add_macro(m);
 
     // Disabled → no fire
-    router.dispatch(&manual_event(), &registry, &store);
+    router.dispatch(&manual_event(), &registry, &store).await;
     assert_eq!(*counter.lock().unwrap(), 0);
 
     // Enable → fires
     router.set_enabled(id, true);
-    router.dispatch(&manual_event(), &registry, &store);
+    router.dispatch(&manual_event(), &registry, &store).await;
     assert_eq!(*counter.lock().unwrap(), 1);
 }
 
 // ── constraint evaluation ──────────────────────────────────────────────────
 
-#[test]
-fn constraint_false_blocks_action() {
+#[tokio::test]
+async fn constraint_false_blocks_action() {
     let counter = Arc::new(Mutex::new(0u32));
     let mut registry = Registry::with_builtins();
     register_counting(&mut registry, Arc::clone(&counter), "blocked_check");
@@ -214,14 +240,19 @@ fn constraint_false_blocks_action() {
     let m = make_macro(
         uuid::Uuid::new_v4(),
         vec![TriggerConfig::Manual],
-        ConstraintExpr::Not { expr: Box::new(ConstraintExpr::Always) },
-        vec![ActionConfig::Custom { provider: "blocked_check".into(), params: serde_json::Value::Null }],
+        ConstraintExpr::Not {
+            expr: Box::new(ConstraintExpr::Always),
+        },
+        vec![ActionConfig::Custom {
+            provider: "blocked_check".into(),
+            params: serde_json::Value::Null,
+        }],
         true,
     );
     let mut router = EventRouter::new();
     router.add_macro(m);
 
-    let events = router.dispatch(&manual_event(), &registry, &store);
+    let events = router.dispatch(&manual_event(), &registry, &store).await;
 
     assert!(events.is_empty(), "constraint false → macro must not fire");
     assert_eq!(*counter.lock().unwrap(), 0);
@@ -229,8 +260,8 @@ fn constraint_false_blocks_action() {
 
 // ── action semantics ───────────────────────────────────────────────────────
 
-#[test]
-fn stop_outcome_halts_action_chain() {
+#[tokio::test]
+async fn stop_outcome_halts_action_chain() {
     let counter = Arc::new(Mutex::new(0u32));
     let mut registry = Registry::with_builtins();
 
@@ -253,21 +284,31 @@ fn stop_outcome_halts_action_chain() {
         vec![TriggerConfig::Manual],
         ConstraintExpr::Always,
         vec![
-            ActionConfig::Custom { provider: "stop_action".into(), params: serde_json::Value::Null },
-            ActionConfig::Custom { provider: "after_stop".into(),  params: serde_json::Value::Null },
+            ActionConfig::Custom {
+                provider: "stop_action".into(),
+                params: serde_json::Value::Null,
+            },
+            ActionConfig::Custom {
+                provider: "after_stop".into(),
+                params: serde_json::Value::Null,
+            },
         ],
         true,
     );
     let mut router = EventRouter::new();
     router.add_macro(m);
 
-    router.dispatch(&manual_event(), &registry, &store);
+    router.dispatch(&manual_event(), &registry, &store).await;
 
-    assert_eq!(*counter.lock().unwrap(), 0, "second action must not run after Stop");
+    assert_eq!(
+        *counter.lock().unwrap(),
+        0,
+        "second action must not run after Stop"
+    );
 }
 
-#[test]
-fn set_variable_action_writes_to_store() {
+#[tokio::test]
+async fn set_variable_action_writes_to_store() {
     let registry = Registry::with_builtins();
     let store: Arc<dyn StateStore> = Arc::new(InMemoryStateStore::new());
 
@@ -277,7 +318,7 @@ fn set_variable_action_writes_to_store() {
         ConstraintExpr::Always,
         vec![ActionConfig::SetVariable {
             scope: VarScope::Global,
-            key:   "answer".into(),
+            key: "answer".into(),
             value: Value::Int(42),
         }],
         true,
@@ -285,15 +326,15 @@ fn set_variable_action_writes_to_store() {
     let mut router = EventRouter::new();
     router.add_macro(m);
 
-    router.dispatch(&manual_event(), &registry, &store);
+    router.dispatch(&manual_event(), &registry, &store).await;
 
     assert_eq!(store.get("answer"), Some(Value::Int(42)));
 }
 
 // ── multiple macros ────────────────────────────────────────────────────────
 
-#[test]
-fn multiple_macros_both_fire_independently() {
+#[tokio::test]
+async fn multiple_macros_both_fire_independently() {
     let c1 = Arc::new(Mutex::new(0u32));
     let c2 = Arc::new(Mutex::new(0u32));
     let mut registry = Registry::with_builtins();
@@ -306,14 +347,20 @@ fn multiple_macros_both_fire_independently() {
         uuid::Uuid::new_v4(),
         vec![TriggerConfig::Manual],
         ConstraintExpr::Always,
-        vec![ActionConfig::Custom { provider: "macro1".into(), params: serde_json::Value::Null }],
+        vec![ActionConfig::Custom {
+            provider: "macro1".into(),
+            params: serde_json::Value::Null,
+        }],
         true,
     );
     let m2 = make_macro(
         uuid::Uuid::new_v4(),
         vec![TriggerConfig::Manual],
         ConstraintExpr::Always,
-        vec![ActionConfig::Custom { provider: "macro2".into(), params: serde_json::Value::Null }],
+        vec![ActionConfig::Custom {
+            provider: "macro2".into(),
+            params: serde_json::Value::Null,
+        }],
         true,
     );
 
@@ -321,17 +368,23 @@ fn multiple_macros_both_fire_independently() {
     router.add_macro(m1);
     router.add_macro(m2);
 
-    let events = router.dispatch(&manual_event(), &registry, &store);
+    let events = router.dispatch(&manual_event(), &registry, &store).await;
 
-    assert_eq!(events.iter().filter(|e| matches!(e, EngineEvent::MacroFired { .. })).count(), 2);
+    assert_eq!(
+        events
+            .iter()
+            .filter(|e| matches!(e, EngineEvent::MacroFired { .. }))
+            .count(),
+        2
+    );
     assert_eq!(*c1.lock().unwrap(), 1);
     assert_eq!(*c2.lock().unwrap(), 1);
 }
 
 // ── remove macro ───────────────────────────────────────────────────────────
 
-#[test]
-fn removed_macro_does_not_fire() {
+#[tokio::test]
+async fn removed_macro_does_not_fire() {
     let counter = Arc::new(Mutex::new(0u32));
     let mut registry = Registry::with_builtins();
     register_counting(&mut registry, Arc::clone(&counter), "remove_check");
@@ -343,14 +396,17 @@ fn removed_macro_does_not_fire() {
         id,
         vec![TriggerConfig::Manual],
         ConstraintExpr::Always,
-        vec![ActionConfig::Custom { provider: "remove_check".into(), params: serde_json::Value::Null }],
+        vec![ActionConfig::Custom {
+            provider: "remove_check".into(),
+            params: serde_json::Value::Null,
+        }],
         true,
     );
     let mut router = EventRouter::new();
     router.add_macro(m);
     router.remove_macro(id);
 
-    let events = router.dispatch(&manual_event(), &registry, &store);
+    let events = router.dispatch(&manual_event(), &registry, &store).await;
 
     assert!(events.is_empty());
     assert_eq!(*counter.lock().unwrap(), 0);

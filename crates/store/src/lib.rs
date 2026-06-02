@@ -132,12 +132,16 @@ impl InMemoryStateStore {
     /// assert!(store.snapshot().is_empty());
     /// ```
     pub fn new() -> Self {
-        Self { data: Mutex::new(BTreeMap::new()) }
+        Self {
+            data: Mutex::new(BTreeMap::new()),
+        }
     }
 }
 
 impl Default for InMemoryStateStore {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl StateStore for InMemoryStateStore {

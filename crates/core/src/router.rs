@@ -9,8 +9,8 @@ use crate::event::{Event, EventKind};
 use crate::permission::PermissionGrant;
 use crate::registry::Registry;
 use crate::state::StateStore;
-use crate::traits::Outcome;
 use crate::value::Value;
+use crate::workflow::run_workflow;
 
 /// Event Router: the central dispatcher of the H→C→A pipeline.
 ///
@@ -19,7 +19,7 @@ use crate::value::Value;
 /// broadcast over all macros.
 pub struct EventRouter {
     /// EventKind → candidate macro IDs (maintained on add/remove).
-    index:  HashMap<EventKind, Vec<MacroId>>,
+    index: HashMap<EventKind, Vec<MacroId>>,
     macros: HashMap<MacroId, Macro>,
 }
 
@@ -34,7 +34,10 @@ impl EventRouter {
     /// let router = EventRouter::new();
     /// ```
     pub fn new() -> Self {
-        Self { index: HashMap::new(), macros: HashMap::new() }
+        Self {
+            index: HashMap::new(),
+            macros: HashMap::new(),
+        }
     }
 
     /// Registers a macro and updates the `EventKind` index for all its triggers.
@@ -58,6 +61,7 @@ impl EventRouter {
     ///     triggers: vec![TriggerConfig::Manual],
     ///     constraints: ConstraintExpr::Always,
     ///     actions: vec![],
+    ///     workflow: None,
     ///     granted_permissions: PermissionSet::default(),
     /// };
     /// router.add_macro(m);
@@ -114,6 +118,7 @@ impl EventRouter {
     ///     triggers: vec![TriggerConfig::Manual],
     ///     constraints: ConstraintExpr::Always,
     ///     actions: vec![],
+    ///     workflow: None,
     ///     granted_permissions: PermissionSet::default(),
     /// };
     /// router.add_macro(m);
@@ -127,9 +132,11 @@ impl EventRouter {
 
     /// Dispatch one event through the full Hook → Constraint → Action pipeline.
     ///
-    /// Returns [`EngineEvent`]s (MacroFired, Error) for the caller to forward to
-    /// the UI thread via `slint::invoke_from_event_loop` (wired in M1.3).
-    pub fn dispatch(
+    /// Async since M2.1: matching and constraint evaluation are synchronous, but the
+    /// Action leg runs as an async [`workflow`](crate::workflow) tree. The engine drives
+    /// this future with `Runtime::block_on`. Returns [`EngineEvent`]s (MacroFired, Error)
+    /// for the caller to forward to the UI thread.
+    pub async fn dispatch(
         &self,
         event: &Event,
         registry: &Registry,
@@ -140,8 +147,12 @@ impl EventRouter {
         };
         let mut output = Vec::new();
         for &macro_id in candidates {
-            let Some(m) = self.macros.get(&macro_id) else { continue };
-            if !m.enabled { continue; }
+            let Some(m) = self.macros.get(&macro_id) else {
+                continue;
+            };
+            if !m.enabled {
+                continue;
+            }
 
             // Fine-grained trigger matching (OR semantics across triggers list)
             let trigger_ok = m.triggers.iter().any(|tc| {
@@ -150,9 +161,14 @@ impl EventRouter {
                     .map(|spec| spec.matches(event))
                     .unwrap_or(false)
             });
-            if !trigger_ok { continue; }
+            if !trigger_ok {
+                continue;
+            }
 
-            output.extend(self.execute_pipeline(macro_id, m, event, registry, store));
+            output.extend(
+                self.execute_pipeline(macro_id, m, event, registry, store)
+                    .await,
+            );
         }
         output
     }
@@ -167,27 +183,34 @@ impl EventRouter {
     /// ```rust
     /// use koakuma_core::router::EventRouter;
     ///
-    /// let router = EventRouter::new();
-    /// let unknown_id = uuid::Uuid::nil();
-    /// // Returns empty vec for unknown macro IDs.
     /// # use std::sync::Arc;
     /// # use koakuma_core::registry::Registry;
     /// # use koakuma_store::InMemoryStateStore;
+    /// # let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+    /// # rt.block_on(async {
+    /// let router = EventRouter::new();
+    /// let unknown_id = uuid::Uuid::nil();
+    /// // Returns empty vec for unknown macro IDs.
     /// let results = router.dispatch_manual_trigger(
     ///     unknown_id,
     ///     &Registry::with_builtins(),
     ///     &(Arc::new(InMemoryStateStore::new()) as _),
-    /// );
+    /// ).await;
     /// assert!(results.is_empty());
+    /// # });
     /// ```
-    pub fn dispatch_manual_trigger(
+    pub async fn dispatch_manual_trigger(
         &self,
         macro_id: MacroId,
         registry: &Registry,
         store: &Arc<dyn StateStore>,
     ) -> Vec<EngineEvent> {
-        let Some(m) = self.macros.get(&macro_id) else { return vec![]; };
-        if !m.enabled { return vec![]; }
+        let Some(m) = self.macros.get(&macro_id) else {
+            return vec![];
+        };
+        if !m.enabled {
+            return vec![];
+        }
         let event = Event {
             kind: EventKind::Manual,
             source: "engine".to_string(),
@@ -195,6 +218,7 @@ impl EventRouter {
             payload: Value::Null,
         };
         self.execute_pipeline(macro_id, m, &event, registry, store)
+            .await
     }
 
     /// Returns a point-in-time snapshot of all registered macros.
@@ -216,11 +240,14 @@ impl EventRouter {
 
     // ── Private pipeline helper ───────────────────────────────────────────────
 
-    /// Evaluates constraints and executes actions for a single macro.
+    /// Evaluates constraints and runs the macro's workflow.
     ///
     /// Shared by [`dispatch`](Self::dispatch) (after trigger matching) and
     /// [`dispatch_manual_trigger`](Self::dispatch_manual_trigger) (trigger matching skipped).
-    fn execute_pipeline(
+    /// The Action leg is delegated to [`workflow::run_workflow`](crate::workflow::run_workflow),
+    /// which interprets the macro's [`WorkflowNode`](crate::domain::WorkflowNode) tree
+    /// (or, for V1 configs, the flat action list wrapped in a `Seq`).
+    async fn execute_pipeline(
         &self,
         macro_id: MacroId,
         m: &Macro,
@@ -231,7 +258,11 @@ impl EventRouter {
         let mut output = Vec::new();
 
         // Constraint evaluation
-        let eval_ctx = EvalContext { event, macro_id, store: store.as_ref() };
+        let eval_ctx = EvalContext {
+            event,
+            macro_id,
+            store: store.as_ref(),
+        };
         match m.constraints.evaluate(&eval_ctx, registry) {
             Ok(true) => {}
             Ok(false) => return output,
@@ -245,9 +276,14 @@ impl EventRouter {
         }
 
         // Macro fires
-        output.push(EngineEvent::MacroFired { id: macro_id, name: m.name.clone(), at: event.timestamp });
+        output.push(EngineEvent::MacroFired {
+            id: macro_id,
+            name: m.name.clone(),
+            at: event.timestamp,
+        });
 
-        // Sequential action execution (V1); V2 upgrades to async Tokio tasks
+        // Async workflow execution: permission gating and control flow live in the
+        // workflow engine. A V1 macro (no `workflow`) runs as a sequential action list.
         let mut exec_ctx = ExecContext {
             event: event.clone(),
             macro_id,
@@ -258,61 +294,27 @@ impl EventRouter {
             log: Default::default(),
         };
 
-        for action_cfg in &m.actions {
-            match registry.build_action(action_cfg) {
-                Ok(action) => {
-                    // Central permission gate: verify all required permissions before execution.
-                    let denied = action
-                        .required_permissions()
-                        .0
-                        .iter()
-                        .find(|p| !exec_ctx.permissions.allows(p))
-                        .map(|p| format!("{p:?}"));
-                    if let Some(name) = denied {
-                        output.push(EngineEvent::Error {
-                            macro_id: Some(macro_id),
-                            message: format!("permission denied: {name}"),
-                        });
-                        break;
-                    }
-                    match action.execute(&mut exec_ctx) {
-                        Ok(Outcome::Continue) => {}
-                        Ok(Outcome::Stop) => break,
-                        Err(e) => {
-                            output.push(EngineEvent::Error {
-                                macro_id: Some(macro_id),
-                                message: e.to_string(),
-                            });
-                            break;
-                        }
-                    }
-                }
-                Err(e) => {
-                    output.push(EngineEvent::Error {
-                        macro_id: Some(macro_id),
-                        message: e.to_string(),
-                    });
-                    break;
-                }
-            }
-        }
+        let root = m.root_workflow();
+        output.extend(run_workflow(&root, &mut exec_ctx, registry).await);
 
         output
     }
 }
 
 impl Default for EventRouter {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 fn event_kind_of(tc: &TriggerConfig) -> EventKind {
     match tc {
-        TriggerConfig::Hotkey { .. }      => EventKind::Hotkey,
+        TriggerConfig::Hotkey { .. } => EventKind::Hotkey,
         TriggerConfig::WindowFocus { .. } => EventKind::WindowFocus,
-        TriggerConfig::Process { .. }     => EventKind::Process,
-        TriggerConfig::Schedule { .. }    => EventKind::Timer,
-        TriggerConfig::FileChange { .. }  => EventKind::FileChange,
-        TriggerConfig::Manual             => EventKind::Manual,
-        TriggerConfig::Custom { .. }      => EventKind::Custom,
+        TriggerConfig::Process { .. } => EventKind::Process,
+        TriggerConfig::Schedule { .. } => EventKind::Timer,
+        TriggerConfig::FileChange { .. } => EventKind::FileChange,
+        TriggerConfig::Manual => EventKind::Manual,
+        TriggerConfig::Custom { .. } => EventKind::Custom,
     }
 }

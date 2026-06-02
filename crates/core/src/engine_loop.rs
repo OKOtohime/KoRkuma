@@ -13,7 +13,7 @@
 use std::sync::Arc;
 use std::thread::{self, JoinHandle};
 
-use crossbeam_channel::{select, unbounded, Receiver};
+use crossbeam_channel::{Receiver, select, unbounded};
 
 use crate::engine::{EngineCommand, EngineEvent};
 use crate::event::Event;
@@ -131,7 +131,13 @@ where
         .spawn(move || engine_loop(cmd_rx, evt_rx, registry, store, on_event))
         .expect("failed to spawn engine thread");
 
-    (EngineHandle { cmd_tx: handle_tx, thread: Some(thread) }, evt_tx)
+    (
+        EngineHandle {
+            cmd_tx: handle_tx,
+            thread: Some(thread),
+        },
+        evt_tx,
+    )
 }
 
 // ── Engine loop ───────────────────────────────────────────────────────────────
@@ -146,6 +152,15 @@ fn engine_loop<F>(
     F: Fn(EngineEvent),
 {
     let mut router = EventRouter::new();
+
+    // Multi-thread Tokio runtime drives the async Action workflows (M2.1). The router's
+    // matching / constraint legs stay synchronous; `block_on` runs each fired macro's
+    // workflow to completion. The M2.2 scheduler will replace `block_on` with `spawn`
+    // for cross-macro concurrency.
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .expect("failed to build Tokio runtime");
 
     loop {
         select! {
@@ -164,7 +179,8 @@ fn engine_loop<F>(
                     router.set_enabled(id, enabled);
                 }
                 Ok(EngineCommand::TriggerManually(id)) => {
-                    for ev in router.dispatch_manual_trigger(id, &registry, &store) {
+                    let events = runtime.block_on(router.dispatch_manual_trigger(id, &registry, &store));
+                    for ev in events {
                         on_event(ev);
                     }
                 }
@@ -175,7 +191,8 @@ fn engine_loop<F>(
             },
             recv(evt_rx) -> msg => {
                 if let Ok(event) = msg {
-                    for ev in router.dispatch(&event, &registry, &store) {
+                    let events = runtime.block_on(router.dispatch(&event, &registry, &store));
+                    for ev in events {
                         on_event(ev);
                     }
                 }

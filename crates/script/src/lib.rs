@@ -37,6 +37,7 @@
 
 use std::sync::{Arc, Mutex};
 
+use async_trait::async_trait;
 use rhai::{Dynamic, Engine, Map as RhaiMap, Scope};
 
 use koakuma_core::{
@@ -53,11 +54,11 @@ use koakuma_core::{
 
 fn value_to_dynamic(v: &Value) -> Dynamic {
     match v {
-        Value::Null    => Dynamic::UNIT,
+        Value::Null => Dynamic::UNIT,
         Value::Bool(b) => Dynamic::from(*b),
-        Value::Int(n)  => Dynamic::from(*n),
-        Value::Float(f)=> Dynamic::from(*f),
-        Value::Str(s)  => Dynamic::from(s.clone()),
+        Value::Int(n) => Dynamic::from(*n),
+        Value::Float(f) => Dynamic::from(*f),
+        Value::Str(s) => Dynamic::from(s.clone()),
         Value::List(l) => {
             let arr: Vec<Dynamic> = l.iter().map(value_to_dynamic).collect();
             Dynamic::from(arr)
@@ -73,12 +74,22 @@ fn value_to_dynamic(v: &Value) -> Dynamic {
 }
 
 fn dynamic_to_value(d: Dynamic) -> Value {
-    if d.is_unit() { return Value::Null; }
-    if let Ok(b) = d.as_bool()  { return Value::Bool(b); }
-    if let Ok(n) = d.as_int()   { return Value::Int(n); }
-    if let Ok(f) = d.as_float() { return Value::Float(f); }
+    if d.is_unit() {
+        return Value::Null;
+    }
+    if let Ok(b) = d.as_bool() {
+        return Value::Bool(b);
+    }
+    if let Ok(n) = d.as_int() {
+        return Value::Int(n);
+    }
+    if let Ok(f) = d.as_float() {
+        return Value::Float(f);
+    }
     // try_cast consumes d — must be last
-    d.try_cast::<String>().map(Value::Str).unwrap_or(Value::Null)
+    d.try_cast::<String>()
+        .map(Value::Str)
+        .unwrap_or(Value::Null)
 }
 
 // ── Sandbox factory ──────────────────────────────────────────────────────────
@@ -110,14 +121,17 @@ pub struct RunScriptAction {
     source: String,
 }
 
+#[async_trait]
 impl Action for RunScriptAction {
-    fn id(&self) -> &'static str { "run_script" }
+    fn id(&self) -> &'static str {
+        "run_script"
+    }
 
     fn required_permissions(&self) -> PermissionSet {
         PermissionSet(vec![Permission::ScriptExecution])
     }
 
-    fn execute(&self, ctx: &mut ExecContext) -> Result<Outcome, ActionError> {
+    async fn execute(&self, ctx: &mut ExecContext) -> Result<Outcome, ActionError> {
         if !ctx.permissions.allows(&Permission::ScriptExecution) {
             return Err(ActionError::PermissionDenied("ScriptExecution".to_string()));
         }
@@ -127,7 +141,11 @@ impl Action for RunScriptAction {
         // Cancellation: abort the script when the macro's cancel token fires.
         let cancel = ctx.cancel.clone();
         engine.on_progress(move |_| {
-            if cancel.is_cancelled() { Some(Dynamic::UNIT) } else { None }
+            if cancel.is_cancelled() {
+                Some(Dynamic::UNIT)
+            } else {
+                None
+            }
         });
 
         // get_var — snapshot-based read of global store + local vars
@@ -137,7 +155,8 @@ impl Action for RunScriptAction {
             if let Some(v) = locals_snap.get(key) {
                 return value_to_dynamic(v);
             }
-            store_for_read.get(key)
+            store_for_read
+                .get(key)
                 .map(|v| value_to_dynamic(&v))
                 .unwrap_or(Dynamic::UNIT)
         });
@@ -146,7 +165,10 @@ impl Action for RunScriptAction {
         let pending: Arc<Mutex<Vec<(String, Value)>>> = Arc::new(Mutex::new(Vec::new()));
         let pending_clone = Arc::clone(&pending);
         engine.register_fn("set_var", move |key: &str, val: Dynamic| {
-            pending_clone.lock().unwrap().push((key.to_string(), dynamic_to_value(val)));
+            pending_clone
+                .lock()
+                .unwrap()
+                .push((key.to_string(), dynamic_to_value(val)));
         });
 
         // log — emit a tagged line to stdout
@@ -175,7 +197,9 @@ impl Action for RunScriptAction {
 /// Factory: builds [`RunScriptAction`] from [`ActionConfig::RunScript`].
 pub fn build_run_script(c: &ActionConfig) -> Option<Box<dyn Action>> {
     if let ActionConfig::RunScript { source, .. } = c {
-        Some(Box::new(RunScriptAction { source: source.clone() }))
+        Some(Box::new(RunScriptAction {
+            source: source.clone(),
+        }))
     } else {
         None
     }
@@ -209,7 +233,9 @@ impl Constraint for ExpressionConstraint {
         // Inject get_var from a store snapshot
         let snap = ctx.store.snapshot();
         engine.register_fn("get_var", move |key: &str| -> Dynamic {
-            snap.get(key).map(|v| value_to_dynamic(v)).unwrap_or(Dynamic::UNIT)
+            snap.get(key)
+                .map(|v| value_to_dynamic(v))
+                .unwrap_or(Dynamic::UNIT)
         });
 
         let mut scope = Scope::new();

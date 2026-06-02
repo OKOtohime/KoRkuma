@@ -1,5 +1,5 @@
-use std::collections::BTreeMap;
 use crate::value::Value;
+use std::collections::BTreeMap;
 
 /// Thread-safe key-value store for variables shared across macro executions.
 ///

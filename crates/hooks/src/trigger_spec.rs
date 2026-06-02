@@ -107,7 +107,10 @@ pub struct WindowFocusTriggerSpec {
 impl WindowFocusTriggerSpec {
     /// Creates a spec that fires when the foreground window title matches `title_pattern`.
     pub fn new(title_pattern: String, regex: bool) -> Self {
-        Self { title_pattern, regex }
+        Self {
+            title_pattern,
+            regex,
+        }
     }
 }
 
@@ -180,9 +183,7 @@ impl TriggerSpec for ProcessTriggerSpec {
         let Some(Value::Str(ev_type)) = payload.get("event") else {
             return false;
         };
-        let name_match = name
-            .to_lowercase()
-            .contains(&self.name.to_lowercase());
+        let name_match = name.to_lowercase().contains(&self.name.to_lowercase());
         let event_match = match self.event {
             ProcessEvent::Started => ev_type == "started",
             ProcessEvent::Stopped => ev_type == "stopped",
@@ -204,7 +205,11 @@ pub fn build_hotkey_spec(c: &TriggerConfig) -> Option<Box<dyn TriggerSpec>> {
 
 /// Builds a [`WindowFocusTriggerSpec`] from [`TriggerConfig::WindowFocus`].
 pub fn build_window_focus_spec(c: &TriggerConfig) -> Option<Box<dyn TriggerSpec>> {
-    if let TriggerConfig::WindowFocus { title_pattern, regex } = c {
+    if let TriggerConfig::WindowFocus {
+        title_pattern,
+        regex,
+    } = c
+    {
         Some(Box::new(WindowFocusTriggerSpec::new(
             title_pattern.clone(),
             *regex,
