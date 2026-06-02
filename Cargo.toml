@@ -26,3 +26,10 @@ crossbeam-channel = "0.5"
 notify            = "6"
 rhai              = "1"
 slint             = "1.16.1"
+
+[profile.release]
+opt-level = "z"
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
