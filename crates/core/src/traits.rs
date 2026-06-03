@@ -158,6 +158,17 @@ pub trait Action: Send + Sync {
     fn id(&self) -> &'static str;
     /// Declares the permissions this action needs; shown to the user at macro-save time.
     fn required_permissions(&self) -> PermissionSet;
+    /// Resource IDs this action requires exclusive access to while executing.
+    ///
+    /// The scheduler acquires named async locks before the action runs and releases
+    /// them on completion, preventing two concurrent macros from interleaving writes
+    /// to the same device (keyboard/mouse input, clipboard, a specific window).
+    ///
+    /// Built-in names: `"input"` (keyboard/mouse injection), `"clipboard"`.
+    /// Window-scoped: `"window:<id>"`. Default implementation returns no resources.
+    fn resources(&self) -> Vec<String> {
+        vec![]
+    }
     /// Executes the action, mutating `ctx` as needed (e.g., writing local variables).
     ///
     /// # Errors

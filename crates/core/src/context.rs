@@ -3,11 +3,55 @@ use crate::event::Event;
 use crate::permission::PermissionGrant;
 use crate::state::StateStore;
 use crate::value::Value;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::{
     Arc,
     atomic::{AtomicBool, Ordering},
 };
+use tokio::sync::Mutex as TokioMutex;
+
+/// A shared pool of per-resource async locks.
+///
+/// Passed through [`ExecContext`] so the workflow engine can acquire exclusive
+/// locks immediately before each action that declares
+/// [`traits::Action::resources`], preventing interleaving of actions that write
+/// to the same device (keyboard injection, clipboard, specific windows).
+///
+/// All concurrent workflows spawned by the same [`WorkflowScheduler`] share one
+/// pool, so resource locks are effective across macros.
+///
+/// Built-in resource names: `"input"` (keyboard/mouse injection) and
+/// `"clipboard"`. Window-specific resources use `"window:<id>"` naming.
+///
+/// # Examples
+///
+/// ```rust
+/// # use koakuma_core::context::ResourcePool;
+/// # let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+/// # rt.block_on(async {
+/// let pool = ResourcePool::new();
+/// let lock1 = pool.get_lock("input").await;
+/// let lock2 = pool.get_lock("input").await;
+/// // lock1 and lock2 point to the same underlying mutex.
+/// # });
+/// ```
+#[derive(Clone, Default)]
+pub struct ResourcePool(Arc<TokioMutex<HashMap<String, Arc<TokioMutex<()>>>>>);
+
+impl ResourcePool {
+    /// Creates a new empty pool. Locks are created on first access.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Returns the async mutex for `id`, creating it if this is the first request.
+    pub async fn get_lock(&self, id: &str) -> Arc<TokioMutex<()>> {
+        let mut map = self.0.lock().await;
+        map.entry(id.to_string())
+            .or_insert_with(|| Arc::new(TokioMutex::new(())))
+            .clone()
+    }
+}
 
 /// Local variable storage scoped to one macro execution.
 ///
@@ -135,6 +179,8 @@ pub struct ExecContext {
     pub permissions: PermissionGrant,
     pub cancel: CancellationToken,
     pub log: LogHandle,
+    /// M2.2: shared pool of per-resource async locks (see [`ResourcePool`]).
+    pub resource_pool: ResourcePool,
 }
 
 impl ExecContext {
@@ -150,7 +196,7 @@ impl ExecContext {
     ///
     /// ```rust
     /// # use std::sync::Arc;
-    /// # use koakuma_core::context::{ExecContext, CancellationToken, LogHandle};
+    /// # use koakuma_core::context::{ExecContext, CancellationToken, LogHandle, ResourcePool};
     /// # use koakuma_core::event::{Event, EventKind};
     /// # use koakuma_core::permission::PermissionGrant;
     /// # use koakuma_core::state::StateStore;
@@ -166,6 +212,7 @@ impl ExecContext {
     ///     permissions: PermissionGrant::new(vec![]),
     ///     cancel: CancellationToken::new(),
     ///     log: LogHandle::default(),
+    ///     resource_pool: ResourcePool::default(),
     /// };
     /// ctx.locals.insert("seed".into(), Value::Int(1));
     /// let fork = ctx.fork();
@@ -180,6 +227,7 @@ impl ExecContext {
             permissions: self.permissions.clone(),
             cancel: self.cancel.clone(),
             log: self.log.clone(),
+            resource_pool: self.resource_pool.clone(),
         }
     }
 }

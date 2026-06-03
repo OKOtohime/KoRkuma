@@ -443,6 +443,43 @@ pub enum WorkflowNode {
     Wait { until: WaitCondition },
 }
 
+/// Per-macro policy governing concurrent workflow executions when the same macro
+/// is triggered repeatedly (e.g., a hotkey held down or fired in rapid succession).
+///
+/// See DESIGN.md §14.2 for the full semantics of each variant.
+///
+/// # Examples
+///
+/// ```rust
+/// use koakuma_core::domain::ConcurrencyPolicy;
+///
+/// let p = ConcurrencyPolicy::Queue { max: 4 };
+/// assert!(matches!(p, ConcurrencyPolicy::Queue { max: 4 }));
+/// assert!(matches!(ConcurrencyPolicy::default(), ConcurrencyPolicy::Parallel));
+/// ```
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind")]
+pub enum ConcurrencyPolicy {
+    /// Default: every trigger spawns an independent workflow (V1 behaviour).
+    Parallel,
+    /// Serialise executions; up to `max` pending triggers are queued, excess dropped.
+    Queue { max: usize },
+    /// Ignore new triggers while one instance is already running.
+    DropIfRunning,
+    /// Cancel the running instance and start a fresh one on each trigger.
+    RestartIfRunning,
+    /// Wait `ms` after the last trigger before executing; resets on each new trigger.
+    Debounce { ms: u64 },
+    /// Execute at most once per `ms` window; the first trigger in the window wins.
+    Throttle { ms: u64 },
+}
+
+impl Default for ConcurrencyPolicy {
+    fn default() -> Self {
+        Self::Parallel
+    }
+}
+
 /// The core three-tuple (Hook + Constraint + Action). Serializable, diffable, shareable.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Macro {
@@ -461,6 +498,13 @@ pub struct Macro {
     #[serde(default)]
     pub workflow: Option<WorkflowNode>,
     pub granted_permissions: PermissionSet,
+    /// M2.2: dispatch priority — higher value fires first when multiple macros match
+    /// the same event. Also determines queue ordering inside the scheduler.
+    #[serde(default)]
+    pub priority: i32,
+    /// M2.2: concurrency policy applied when this macro is triggered repeatedly.
+    #[serde(default)]
+    pub concurrency: ConcurrencyPolicy,
 }
 
 impl Macro {
@@ -487,6 +531,8 @@ impl Macro {
     ///     actions: vec![ActionConfig::Delay { millis: 0 }],
     ///     workflow: None,
     ///     granted_permissions: PermissionSet::default(),
+    ///     priority: 0,
+    ///     concurrency: Default::default(),
     /// };
     /// assert!(matches!(m.root_workflow(), WorkflowNode::Seq(v) if v.len() == 1));
     /// ```

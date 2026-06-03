@@ -507,6 +507,8 @@ fn create_default_macro() -> Macro {
         actions,
         workflow: None,
         granted_permissions,
+        priority: 0,
+        concurrency: Default::default(),
     }
 }
 

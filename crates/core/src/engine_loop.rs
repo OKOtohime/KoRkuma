@@ -19,6 +19,7 @@ use crate::engine::{EngineCommand, EngineEvent};
 use crate::event::Event;
 use crate::registry::Registry;
 use crate::router::EventRouter;
+use crate::scheduler::WorkflowScheduler;
 use crate::state::StateStore;
 use crate::traits::EventSink;
 
@@ -153,14 +154,16 @@ fn engine_loop<F>(
 {
     let mut router = EventRouter::new();
 
-    // Multi-thread Tokio runtime drives the async Action workflows (M2.1). The router's
-    // matching / constraint legs stay synchronous; `block_on` runs each fired macro's
-    // workflow to completion. The M2.2 scheduler will replace `block_on` with `spawn`
-    // for cross-macro concurrency.
+    // Multi-thread Tokio runtime drives async workflow tasks (M2.2).
+    // The router's matching / constraint legs stay synchronous.
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .expect("failed to build Tokio runtime");
+
+    // M2.2: scheduler receives workflow EngineEvents (errors) from spawned tasks.
+    let (sched_tx, sched_rx) = unbounded::<EngineEvent>();
+    let scheduler = WorkflowScheduler::new(runtime.handle().clone(), sched_tx);
 
     loop {
         select! {
@@ -179,7 +182,10 @@ fn engine_loop<F>(
                     router.set_enabled(id, enabled);
                 }
                 Ok(EngineCommand::TriggerManually(id)) => {
-                    let events = runtime.block_on(router.dispatch_manual_trigger(id, &registry, &store));
+                    // Manual triggers use inline dispatch (backward-compatible).
+                    let events = runtime.block_on(
+                        router.dispatch_manual_trigger(id, &registry, &store)
+                    );
                     for ev in events {
                         on_event(ev);
                     }
@@ -191,10 +197,20 @@ fn engine_loop<F>(
             },
             recv(evt_rx) -> msg => {
                 if let Ok(event) = msg {
-                    let events = runtime.block_on(router.dispatch(&event, &registry, &store));
+                    // M2.2 scheduled dispatch: returns MacroFired events immediately;
+                    // workflow execution is spawned on the Tokio runtime.
+                    let events = router.dispatch_scheduled(
+                        &event, &registry, &store, &scheduler
+                    );
                     for ev in events {
                         on_event(ev);
                     }
+                }
+            },
+            // Receive async workflow EngineEvents (errors) from the scheduler.
+            recv(sched_rx) -> msg => {
+                if let Ok(ev) = msg {
+                    on_event(ev);
                 }
             },
         }

@@ -43,6 +43,7 @@ fn exec_ctx(s: Arc<InMemoryStateStore>, perms: Vec<Permission>) -> ExecContext {
         permissions: PermissionGrant::new(perms),
         cancel: CancellationToken::default(),
         log: LogHandle::default(),
+        resource_pool: Default::default(),
     }
 }
 

@@ -72,7 +72,7 @@ pub enum Flow {
 ///
 /// ```rust
 /// # use std::sync::Arc;
-/// # use koakuma_core::context::{ExecContext, CancellationToken, LogHandle};
+/// # use koakuma_core::context::{ExecContext, CancellationToken, LogHandle, ResourcePool};
 /// # use koakuma_core::domain::{WorkflowNode, ActionConfig, VarScope};
 /// # use koakuma_core::event::{Event, EventKind};
 /// # use koakuma_core::permission::PermissionGrant;
@@ -94,6 +94,7 @@ pub enum Flow {
 ///     permissions: PermissionGrant::new(vec![]),
 ///     cancel: CancellationToken::new(),
 ///     log: LogHandle::default(),
+///     resource_pool: ResourcePool::default(),
 /// };
 /// let wf = WorkflowNode::Action(ActionConfig::SetVariable {
 ///     scope: VarScope::Global, key: "k".into(), value: Value::Int(7),
@@ -115,10 +116,9 @@ pub async fn run_workflow(
 /// Boxed-future return type for the recursive node interpreter.
 ///
 /// `async fn` cannot call itself directly; boxing the future breaks the recursion.
-/// No `Send` bound is required because the engine drives workflows with
-/// `Runtime::block_on` on a single thread (true cross-thread parallelism is the
-/// M2.2 scheduler's job).
-type NodeFuture<'a> = Pin<Box<dyn Future<Output = (Flow, Vec<EngineEvent>)> + 'a>>;
+/// `+ Send` is required so the M2.2 `WorkflowScheduler` can spawn workflows on
+/// the Tokio multi-thread runtime via `tokio::spawn`.
+type NodeFuture<'a> = Pin<Box<dyn Future<Output = (Flow, Vec<EngineEvent>)> + Send + 'a>>;
 
 /// Recursively interprets one [`WorkflowNode`].
 fn run_node<'a>(
@@ -304,7 +304,7 @@ fn run_node<'a>(
     })
 }
 
-/// Builds, permission-gates, and awaits a single action.
+/// Builds, permission-gates, acquires resource locks, and awaits a single action.
 async fn run_action(
     cfg: &crate::domain::ActionConfig,
     ctx: &mut ExecContext,
@@ -326,11 +326,23 @@ async fn run_action(
         return (Flow::Failed, vec![error_event(ctx, msg)]);
     }
 
-    match action.execute(ctx).await {
+    // Acquire exclusive resource locks to prevent concurrent access to shared
+    // devices (keyboard/mouse input, clipboard, specific windows). Locks are
+    // held for the duration of the action and released on drop.
+    let resource_ids = action.resources();
+    let mut guards = Vec::new();
+    for id in &resource_ids {
+        let lock = ctx.resource_pool.get_lock(id).await;
+        guards.push(lock.lock_owned().await);
+    }
+
+    let result = match action.execute(ctx).await {
         Ok(Outcome::Continue) => (Flow::Continue, Vec::new()),
         Ok(Outcome::Stop) => (Flow::Stop, Vec::new()),
         Err(e) => (Flow::Failed, vec![error_event(ctx, e.to_string())]),
-    }
+    };
+    drop(guards);
+    result
 }
 
 /// Evaluates an `If`/`While` condition against a read-only view of the context.

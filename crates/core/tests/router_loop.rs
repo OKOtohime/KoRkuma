@@ -93,6 +93,8 @@ fn make_macro(
         actions,
         workflow: None,
         granted_permissions: PermissionSet::default(),
+        priority: 0,
+        concurrency: Default::default(),
     }
 }
 

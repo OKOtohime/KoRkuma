@@ -44,6 +44,7 @@ fn exec_ctx(store: Arc<dyn StateStore>, perms: Vec<Permission>) -> ExecContext {
         permissions: PermissionGrant::new(perms),
         cancel: CancellationToken::new(),
         log: LogHandle,
+        resource_pool: Default::default(),
     }
 }
 
@@ -412,6 +413,8 @@ async fn legacy_flat_actions_run_sequentially() {
         ],
         workflow: None,
         granted_permissions: PermissionSet::default(),
+        priority: 0,
+        concurrency: Default::default(),
     };
     let root = m.root_workflow();
     let mut ctx = exec_ctx(Arc::clone(&store), vec![]);

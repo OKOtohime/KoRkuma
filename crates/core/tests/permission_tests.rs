@@ -186,6 +186,8 @@ fn permissioned_macro(id: uuid::Uuid, perms: PermissionSet) -> Macro {
         }],
         workflow: None,
         granted_permissions: perms,
+        priority: 0,
+        concurrency: Default::default(),
     }
 }
 

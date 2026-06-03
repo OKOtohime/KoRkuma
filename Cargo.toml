@@ -28,7 +28,7 @@ rhai              = "1"
 slint             = "1.16.1"
 async-trait       = "0.1"
 futures           = "0.3"
-tokio             = { version = "1", features = ["rt", "rt-multi-thread", "time", "macros"] }
+tokio             = { version = "1", features = ["rt", "rt-multi-thread", "time", "macros", "sync"] }
 
 [profile.release]
 opt-level = "z"

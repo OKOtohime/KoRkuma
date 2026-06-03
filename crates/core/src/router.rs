@@ -2,12 +2,13 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::SystemTime;
 
-use crate::context::{EvalContext, ExecContext};
+use crate::context::{CancellationToken, EvalContext, ExecContext, LogHandle, ResourcePool};
 use crate::domain::{Macro, MacroId, TriggerConfig};
 use crate::engine::{EngineEvent, EngineSnapshot};
 use crate::event::{Event, EventKind};
 use crate::permission::PermissionGrant;
 use crate::registry::Registry;
+use crate::scheduler::WorkflowScheduler;
 use crate::state::StateStore;
 use crate::value::Value;
 use crate::workflow::run_workflow;
@@ -63,6 +64,8 @@ impl EventRouter {
     ///     actions: vec![],
     ///     workflow: None,
     ///     granted_permissions: PermissionSet::default(),
+    ///     priority: 0,
+    ///     concurrency: Default::default(),
     /// };
     /// router.add_macro(m);
     /// ```
@@ -120,6 +123,8 @@ impl EventRouter {
     ///     actions: vec![],
     ///     workflow: None,
     ///     granted_permissions: PermissionSet::default(),
+    ///     priority: 0,
+    ///     concurrency: Default::default(),
     /// };
     /// router.add_macro(m);
     /// router.set_enabled(id, false);
@@ -136,6 +141,8 @@ impl EventRouter {
     /// Action leg runs as an async [`workflow`](crate::workflow) tree. The engine drives
     /// this future with `Runtime::block_on`. Returns [`EngineEvent`]s (MacroFired, Error)
     /// for the caller to forward to the UI thread.
+    ///
+    /// Macros are evaluated in descending `priority` order within this event.
     pub async fn dispatch(
         &self,
         event: &Event,
@@ -145,14 +152,22 @@ impl EventRouter {
         let Some(candidates) = self.index.get(&event.kind) else {
             return vec![];
         };
+
+        // Collect enabled candidates with their priorities, then sort high→low.
+        let mut ordered: Vec<(i32, MacroId)> = candidates
+            .iter()
+            .filter_map(|&id| {
+                let m = self.macros.get(&id)?;
+                if m.enabled { Some((m.priority, id)) } else { None }
+            })
+            .collect();
+        ordered.sort_unstable_by(|a, b| b.0.cmp(&a.0));
+
         let mut output = Vec::new();
-        for &macro_id in candidates {
+        for (_, macro_id) in ordered {
             let Some(m) = self.macros.get(&macro_id) else {
                 continue;
             };
-            if !m.enabled {
-                continue;
-            }
 
             // Fine-grained trigger matching (OR semantics across triggers list)
             let trigger_ok = m.triggers.iter().any(|tc| {
@@ -170,6 +185,90 @@ impl EventRouter {
                     .await,
             );
         }
+        output
+    }
+
+    /// Synchronous scheduled dispatch: identify fired macros (with priority sort),
+    /// emit `MacroFired` events, and hand workflow execution to the `scheduler`.
+    ///
+    /// Unlike [`dispatch`](Self::dispatch), this method returns immediately after
+    /// handing off to the scheduler. Workflow [`EngineEvent`]s arrive asynchronously
+    /// via the channel the scheduler was constructed with.
+    ///
+    /// Used by the engine loop in M2.2; the existing `dispatch` remains available
+    /// for inline execution (backward-compatible tests and manual triggers).
+    pub fn dispatch_scheduled(
+        &self,
+        event: &Event,
+        registry: &Arc<Registry>,
+        store: &Arc<dyn StateStore>,
+        scheduler: &WorkflowScheduler,
+    ) -> Vec<EngineEvent> {
+        let Some(candidates) = self.index.get(&event.kind) else {
+            return vec![];
+        };
+
+        let mut output = Vec::new();
+        let mut to_fire: Vec<(i32, MacroId)> = Vec::new();
+
+        for &macro_id in candidates {
+            let Some(m) = self.macros.get(&macro_id) else {
+                continue;
+            };
+            if !m.enabled {
+                continue;
+            }
+
+            let trigger_ok = m.triggers.iter().any(|tc| {
+                registry
+                    .build_trigger(tc)
+                    .map(|spec| spec.matches(event))
+                    .unwrap_or(false)
+            });
+            if !trigger_ok {
+                continue;
+            }
+
+            let eval_ctx = EvalContext {
+                event,
+                macro_id,
+                store: store.as_ref(),
+            };
+            match m.constraints.evaluate(&eval_ctx, registry) {
+                Ok(true) => to_fire.push((m.priority, macro_id)),
+                Ok(false) => {}
+                Err(e) => output.push(EngineEvent::Error {
+                    macro_id: Some(macro_id),
+                    message: e.to_string(),
+                }),
+            }
+        }
+
+        // Dispatch in descending priority order.
+        to_fire.sort_unstable_by(|a, b| b.0.cmp(&a.0));
+
+        for (_, macro_id) in to_fire {
+            let m = &self.macros[&macro_id];
+            output.push(EngineEvent::MacroFired {
+                id: macro_id,
+                name: m.name.clone(),
+                at: event.timestamp,
+            });
+
+            let ctx = ExecContext {
+                event: event.clone(),
+                macro_id,
+                locals: Default::default(),
+                store: Arc::clone(store),
+                permissions: PermissionGrant::from_set(&m.granted_permissions),
+                cancel: CancellationToken::new(),
+                log: LogHandle,
+                resource_pool: scheduler.resource_pool().clone(),
+            };
+
+            scheduler.schedule(macro_id, &m.concurrency, ctx, m.root_workflow(), Arc::clone(registry));
+        }
+
         output
     }
 
@@ -291,7 +390,8 @@ impl EventRouter {
             store: Arc::clone(store),
             permissions: PermissionGrant::from_set(&m.granted_permissions),
             cancel: Default::default(),
-            log: Default::default(),
+            log: LogHandle,
+            resource_pool: ResourcePool::default(),
         };
 
         let root = m.root_workflow();

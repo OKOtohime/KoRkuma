@@ -31,6 +31,7 @@ pub mod event;
 pub mod permission;
 pub mod registry;
 pub mod router;
+pub mod scheduler;
 pub mod state;
 pub mod traits;
 pub mod value;

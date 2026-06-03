@@ -31,6 +31,8 @@ fn make_macro(name: &str, enabled: bool) -> Macro {
         }],
         workflow: None,
         granted_permissions: PermissionSet::default(),
+        priority: 0,
+        concurrency: Default::default(),
     }
 }
 
