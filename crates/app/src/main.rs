@@ -68,6 +68,12 @@ fn main() -> Result<(), slint::PlatformError> {
         }
         Err(e) => return Err(e),
     };
+    {
+        let locale = system_locale();
+        if let Err(e) = slint::select_bundled_translation(&locale) {
+            eprintln!("[koakuma] i18n: no bundled translation for '{locale}': {e}");
+        }
+    }
     let ui_weak = ui.as_weak();
 
     let macros_model: Rc<VecModel<MacroItem>> = Rc::new(VecModel::default());
@@ -864,6 +870,17 @@ fn create_default_macro() -> Macro {
         priority: 0,
         concurrency: Default::default(),
     }
+}
+
+// ── Locale detection ─────────────────────────────────────────────────────────
+
+fn system_locale() -> String {
+    // "zh_CN.UTF-8" → "zh-CN"
+    let raw = std::env::var("LANG")
+        .or_else(|_| std::env::var("LANGUAGE"))
+        .or_else(|_| std::env::var("LC_ALL"))
+        .unwrap_or_else(|_| "en".to_string());
+    raw.split('.').next().unwrap_or(&raw).replace('_', "-")
 }
 
 // ── Renderer detection ────────────────────────────────────────────────────────

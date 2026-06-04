@@ -36,7 +36,7 @@ export struct WorkflowRow {
 export component MainWindow inherits Window {
     width: 1060px;
     height: 680px;
-    title: "Koakuma — Automation Engine";
+    title: @tr("Koakuma — Automation Engine");
 
     // ── Model properties ──────────────────────────────────────────────────────
     in property <[MacroItem]> macros;
@@ -94,7 +94,7 @@ export component MainWindow inherits Window {
             spacing: 6px;
 
             Text {
-                text: "Macros";
+                text: @tr("Macros");
                 font-size: 14px;
                 font-weight: 700;
             }
@@ -146,7 +146,7 @@ export component MainWindow inherits Window {
                             height: 26px;
 
                             Button {
-                                text: "▶ Run";
+                                text: @tr("▶ Run");
                                 height: 22px;
                                 clicked => {
                                     root.selected-index = idx;
@@ -156,7 +156,7 @@ export component MainWindow inherits Window {
                             }
 
                             Button {
-                                text: "Dry ▶";
+                                text: @tr("Dry ▶");
                                 height: 22px;
                                 clicked => {
                                     root.selected-index = idx;
@@ -177,7 +177,7 @@ export component MainWindow inherits Window {
             }
 
             Button {
-                text: "+ Add Macro";
+                text: @tr("+ Add Macro");
                 clicked => { root.add-macro(); }
             }
         }
@@ -199,7 +199,7 @@ export component MainWindow inherits Window {
 
                 // ── Triggers tab (JSON preview) ───────────────────────────────
                 Tab {
-                    title: "Triggers";
+                    title: @tr("Triggers");
                     TextEdit {
                         text: root.selected-triggers;
                         read-only: true;
@@ -211,7 +211,7 @@ export component MainWindow inherits Window {
 
                 // ── Constraints tab ───────────────────────────────────────────
                 Tab {
-                    title: "Constraints";
+                    title: @tr("Constraints");
                     VerticalLayout {
                         padding: 4px;
                         spacing: 4px;
@@ -223,28 +223,28 @@ export component MainWindow inherits Window {
                             alignment: start;
 
                             Text {
-                                text: "+ Leaf:";
+                                text: @tr("+ Leaf:");
                                 font-size: 11px;
                                 vertical-alignment: center;
                             }
 
                             Button {
-                                text: "Window";
+                                text: @tr("Window");
                                 height: 24px;
                                 clicked => { root.constraint-add-leaf("ActiveWindow"); }
                             }
                             Button {
-                                text: "Time";
+                                text: @tr("Time");
                                 height: 24px;
                                 clicked => { root.constraint-add-leaf("TimeRange"); }
                             }
                             Button {
-                                text: "Var";
+                                text: @tr("Var");
                                 height: 24px;
                                 clicked => { root.constraint-add-leaf("VarCompare"); }
                             }
                             Button {
-                                text: "Expr";
+                                text: @tr("Expr");
                                 height: 24px;
                                 clicked => { root.constraint-add-leaf("Expression"); }
                             }
@@ -252,22 +252,22 @@ export component MainWindow inherits Window {
                             Rectangle { width: 8px; }
 
                             Text {
-                                text: "Wrap:";
+                                text: @tr("Wrap:");
                                 font-size: 11px;
                                 vertical-alignment: center;
                             }
                             Button {
-                                text: "AND";
+                                text: @tr("AND");
                                 height: 24px;
                                 clicked => { root.constraint-wrap("And"); }
                             }
                             Button {
-                                text: "OR";
+                                text: @tr("OR");
                                 height: 24px;
                                 clicked => { root.constraint-wrap("Or"); }
                             }
                             Button {
-                                text: "NOT";
+                                text: @tr("NOT");
                                 height: 24px;
                                 clicked => { root.constraint-wrap("Not"); }
                             }
@@ -338,7 +338,7 @@ export component MainWindow inherits Window {
                             spacing: 4px;
 
                             Text {
-                                text: "Params JSON:";
+                                text: @tr("Params JSON:");
                                 font-size: 11px;
                                 font-weight: 600;
                                 vertical-alignment: center;
@@ -346,7 +346,7 @@ export component MainWindow inherits Window {
                             }
 
                             Button {
-                                text: "Delete";
+                                text: @tr("Delete");
                                 height: 22px;
                                 enabled: root.constraint-selected >= 0;
                                 clicked => { root.constraint-delete-node(root.constraint-selected); }
@@ -363,7 +363,7 @@ export component MainWindow inherits Window {
 
                         Button {
                             height: 26px;
-                            text: "Update Constraint";
+                            text: @tr("Update Constraint");
                             enabled: root.constraint-selected >= 0;
                             clicked => {
                                 root.constraint-update-node(
@@ -377,7 +377,7 @@ export component MainWindow inherits Window {
 
                 // ── Workflow tab ──────────────────────────────────────────────
                 Tab {
-                    title: "Workflow";
+                    title: @tr("Workflow");
                     VerticalLayout {
                         padding: 4px;
                         spacing: 4px;
@@ -389,33 +389,33 @@ export component MainWindow inherits Window {
                             alignment: start;
 
                             Text {
-                                text: "+ Action:";
+                                text: @tr("+ Action:");
                                 font-size: 11px;
                                 vertical-alignment: center;
                             }
 
                             Button {
-                                text: "Notify";
+                                text: @tr("Notify");
                                 height: 24px;
                                 clicked => { root.workflow-add-action("Notify"); }
                             }
                             Button {
-                                text: "Run";
+                                text: @tr("Run");
                                 height: 24px;
                                 clicked => { root.workflow-add-action("RunCommand"); }
                             }
                             Button {
-                                text: "Delay";
+                                text: @tr("Delay");
                                 height: 24px;
                                 clicked => { root.workflow-add-action("Delay"); }
                             }
                             Button {
-                                text: "Script";
+                                text: @tr("Script");
                                 height: 24px;
                                 clicked => { root.workflow-add-action("RunScript"); }
                             }
                             Button {
-                                text: "Interact";
+                                text: @tr("Interact");
                                 height: 24px;
                                 clicked => { root.workflow-add-action("Interact"); }
                             }
@@ -423,17 +423,17 @@ export component MainWindow inherits Window {
                             Rectangle { width: 8px; }
 
                             Text {
-                                text: "Control:";
+                                text: @tr("Control:");
                                 font-size: 11px;
                                 vertical-alignment: center;
                             }
                             Button {
-                                text: "If";
+                                text: @tr("If");
                                 height: 24px;
                                 clicked => { root.workflow-add-if(); }
                             }
                             Button {
-                                text: "Parallel";
+                                text: @tr("Parallel");
                                 height: 24px;
                                 clicked => { root.workflow-add-parallel(); }
                             }
@@ -507,7 +507,7 @@ export component MainWindow inherits Window {
                             spacing: 4px;
 
                             Text {
-                                text: "Target:";
+                                text: @tr("Target:");
                                 font-size: 11px;
                                 vertical-alignment: center;
                                 width: 46px;
@@ -529,7 +529,7 @@ export component MainWindow inherits Window {
                             }
 
                             Text {
-                                text: "OnNoBg:";
+                                text: @tr("OnNoBg:");
                                 font-size: 11px;
                                 vertical-alignment: center;
                                 width: 52px;
@@ -549,7 +549,7 @@ export component MainWindow inherits Window {
                             spacing: 4px;
 
                             Text {
-                                text: "Params JSON:";
+                                text: @tr("Params JSON:");
                                 font-size: 11px;
                                 font-weight: 600;
                                 vertical-alignment: center;
@@ -557,7 +557,7 @@ export component MainWindow inherits Window {
                             }
 
                             Button {
-                                text: "Delete";
+                                text: @tr("Delete");
                                 height: 22px;
                                 enabled: root.workflow-selected >= 0;
                                 clicked => { root.workflow-delete-node(root.workflow-selected); }
@@ -574,7 +574,7 @@ export component MainWindow inherits Window {
 
                         Button {
                             height: 26px;
-                            text: "Update Action";
+                            text: @tr("Update Action");
                             enabled: root.workflow-selected >= 0;
                             clicked => {
                                 root.workflow-update-node(
@@ -600,7 +600,7 @@ export component MainWindow inherits Window {
                 spacing: 2px;
 
                 Text {
-                    text: "Log";
+                    text: @tr("Log");
                     font-size: 12px;
                     font-weight: 700;
                     height: 18px;

@@ -1,0 +1,103 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Koakuma — Automation Engine"
+msgstr "Koakuma — 自动化引擎"
+
+msgid "Macros"
+msgstr "宏"
+
+msgid "▶ Run"
+msgstr "▶ 运行"
+
+msgid "Dry ▶"
+msgstr "预演 ▶"
+
+msgid "+ Add Macro"
+msgstr "+ 添加宏"
+
+msgid "Triggers"
+msgstr "触发器"
+
+msgid "Constraints"
+msgstr "约束"
+
+msgid "Workflow"
+msgstr "工作流"
+
+msgid "+ Leaf:"
+msgstr "+ 叶节点:"
+
+msgid "Window"
+msgstr "窗口"
+
+msgid "Time"
+msgstr "时间"
+
+msgid "Var"
+msgstr "变量"
+
+msgid "Expr"
+msgstr "表达式"
+
+msgid "Wrap:"
+msgstr "包裹:"
+
+msgid "AND"
+msgstr "与"
+
+msgid "OR"
+msgstr "或"
+
+msgid "NOT"
+msgstr "非"
+
+msgid "Params JSON:"
+msgstr "参数 JSON:"
+
+msgid "Delete"
+msgstr "删除"
+
+msgid "Update Constraint"
+msgstr "更新约束"
+
+msgid "+ Action:"
+msgstr "+ 动作:"
+
+msgid "Notify"
+msgstr "通知"
+
+msgid "Run"
+msgstr "运行"
+
+msgid "Delay"
+msgstr "延迟"
+
+msgid "Script"
+msgstr "脚本"
+
+msgid "Interact"
+msgstr "交互"
+
+msgid "Control:"
+msgstr "控制:"
+
+msgid "If"
+msgstr "条件"
+
+msgid "Parallel"
+msgstr "并行"
+
+msgid "Target:"
+msgstr "目标:"
+
+msgid "OnNoBg:"
+msgstr "无后台:"
+
+msgid "Update Action"
+msgstr "更新动作"
+
+msgid "Log"
+msgstr "日志"
