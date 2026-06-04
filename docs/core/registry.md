@@ -1,6 +1,6 @@
 # `registry` — 插件工厂注册表
 
-> **Crate**: `koakuma-core` · **文件**: `crates/core/src/registry.rs`
+> **Crate**: `korkuma-core` · **文件**: `crates/core/src/registry.rs`
 > **最后同步**: 2026-06-02
 
 ## 职责

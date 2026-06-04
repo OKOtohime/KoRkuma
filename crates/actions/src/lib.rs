@@ -1,4 +1,4 @@
-//! Built-in [`Action`](koakuma_core::traits::Action) implementations.
+//! Built-in [`Action`](korkuma_core::traits::Action) implementations.
 //!
 //! # Provided actions
 //!
@@ -9,14 +9,14 @@
 //! | [`SimulateInputAction`] | `ActionConfig::SimulateInput` | Windows (stub elsewhere) |
 //!
 //! `SetVariable` and `Delay` are lightweight builtins that live in
-//! `koakuma-core` (`builtins.rs`) and are pre-registered by
-//! [`Registry::with_builtins`](koakuma_core::registry::Registry::with_builtins).
+//! `korkuma-core` (`builtins.rs`) and are pre-registered by
+//! [`Registry::with_builtins`](korkuma_core::registry::Registry::with_builtins).
 //!
 //! # Usage
 //!
 //! ```rust,no_run
-//! use koakuma_core::registry::Registry;
-//! use koakuma_actions::register_all;
+//! use korkuma_core::registry::Registry;
+//! use korkuma_actions::register_all;
 //!
 //! let mut registry = Registry::with_builtins();
 //! register_all(&mut registry);
@@ -33,7 +33,7 @@ pub use notify::NotifyAction;
 pub use run_command::RunCommandAction;
 pub use simulate_input::SimulateInputAction;
 
-use koakuma_core::registry::Registry;
+use korkuma_core::registry::Registry;
 
 /// Registers all built-in action factories with `registry`.
 ///
@@ -42,8 +42,8 @@ use koakuma_core::registry::Registry;
 /// # Examples
 ///
 /// ```rust,no_run
-/// use koakuma_core::registry::Registry;
-/// use koakuma_actions::register_all;
+/// use korkuma_core::registry::Registry;
+/// use korkuma_actions::register_all;
 ///
 /// let mut registry = Registry::with_builtins();
 /// register_all(&mut registry);

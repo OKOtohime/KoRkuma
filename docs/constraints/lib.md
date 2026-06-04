@@ -1,6 +1,6 @@
-# `lib` — koakuma-constraints crate 根
+# `lib` — korkuma-constraints crate 根
 
-> **Crate**: `koakuma-constraints` · **文件**: `crates/constraints/src/lib.rs`
+> **Crate**: `korkuma-constraints` · **文件**: `crates/constraints/src/lib.rs`
 > **最后同步**: 2026-06-02
 
 ## 职责
@@ -9,6 +9,6 @@
 
 ## 设计说明
 
-M2.2 将引入 `koakuma-script` crate（Rhai 沙箱），届时 `ConstraintConfig::Expression { dsl }` 的处理也在此 crate 实现，通过 `Registry::register_constraint` 注册。
+M2.2 将引入 `korkuma-script` crate（Rhai 沙箱），届时 `ConstraintConfig::Expression { dsl }` 的处理也在此 crate 实现，通过 `Registry::register_constraint` 注册。
 
 详见 [README](README.md)。

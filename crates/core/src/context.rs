@@ -26,7 +26,7 @@ use tokio::sync::Mutex as TokioMutex;
 /// # Examples
 ///
 /// ```rust
-/// # use koakuma_core::context::ResourcePool;
+/// # use korkuma_core::context::ResourcePool;
 /// # let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
 /// # rt.block_on(async {
 /// let pool = ResourcePool::new();
@@ -61,8 +61,8 @@ impl ResourcePool {
 /// # Examples
 ///
 /// ```rust
-/// use koakuma_core::context::LocalVars;
-/// use koakuma_core::value::Value;
+/// use korkuma_core::context::LocalVars;
+/// use korkuma_core::value::Value;
 ///
 /// let mut vars = LocalVars::new();
 /// vars.insert("result".to_string(), Value::Int(0));
@@ -78,7 +78,7 @@ pub type LocalVars = BTreeMap<String, Value>;
 /// # Examples
 ///
 /// ```rust
-/// use koakuma_core::context::CancellationToken;
+/// use korkuma_core::context::CancellationToken;
 ///
 /// let token = CancellationToken::new();
 /// let clone = token.clone();
@@ -96,7 +96,7 @@ impl CancellationToken {
     /// # Examples
     ///
     /// ```rust
-    /// use koakuma_core::context::CancellationToken;
+    /// use korkuma_core::context::CancellationToken;
     ///
     /// let token = CancellationToken::new();
     /// assert!(!token.is_cancelled());
@@ -110,7 +110,7 @@ impl CancellationToken {
     /// # Examples
     ///
     /// ```rust
-    /// use koakuma_core::context::CancellationToken;
+    /// use korkuma_core::context::CancellationToken;
     ///
     /// let token = CancellationToken::new();
     /// token.cancel();
@@ -125,7 +125,7 @@ impl CancellationToken {
     /// # Examples
     ///
     /// ```rust
-    /// use koakuma_core::context::CancellationToken;
+    /// use korkuma_core::context::CancellationToken;
     ///
     /// let token = CancellationToken::new();
     /// assert!(!token.is_cancelled());
@@ -154,7 +154,7 @@ impl LogHandle {
     /// # Examples
     ///
     /// ```rust
-    /// use koakuma_core::context::LogHandle;
+    /// use korkuma_core::context::LogHandle;
     ///
     /// let log = LogHandle::default();
     /// log.log("info", "action completed"); // no-op in M1.1
@@ -199,12 +199,12 @@ impl ExecContext {
     ///
     /// ```rust
     /// # use std::sync::Arc;
-    /// # use koakuma_core::context::{ExecContext, CancellationToken, LogHandle, ResourcePool};
-    /// # use koakuma_core::event::{Event, EventKind};
-    /// # use koakuma_core::permission::PermissionGrant;
-    /// # use koakuma_core::state::StateStore;
-    /// # use koakuma_core::value::Value;
-    /// # use koakuma_store::InMemoryStateStore;
+    /// # use korkuma_core::context::{ExecContext, CancellationToken, LogHandle, ResourcePool};
+    /// # use korkuma_core::event::{Event, EventKind};
+    /// # use korkuma_core::permission::PermissionGrant;
+    /// # use korkuma_core::state::StateStore;
+    /// # use korkuma_core::value::Value;
+    /// # use korkuma_store::InMemoryStateStore;
     /// # use std::time::SystemTime;
     /// let store: Arc<dyn StateStore> = Arc::new(InMemoryStateStore::new());
     /// let mut ctx = ExecContext {

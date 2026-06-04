@@ -105,7 +105,7 @@ impl WorkflowScheduler {
     /// # Examples
     ///
     /// ```rust,no_run
-    /// use koakuma_core::scheduler::WorkflowScheduler;
+    /// use korkuma_core::scheduler::WorkflowScheduler;
     ///
     /// let rt = tokio::runtime::Builder::new_multi_thread()
     ///     .enable_all().build().unwrap();

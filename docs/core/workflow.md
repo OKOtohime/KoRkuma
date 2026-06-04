@@ -1,6 +1,6 @@
 # `workflow` — 异步工作流引擎
 
-> **Crate**: `koakuma-core` · **文件**: `crates/core/src/workflow.rs`
+> **Crate**: `korkuma-core` · **文件**: `crates/core/src/workflow.rs`
 > **最后同步**: 2026-06-04 (M2.4 更新：`run_action` 新增 `dry_run` 短路逻辑)
 
 ## 职责

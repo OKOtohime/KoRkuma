@@ -5,7 +5,7 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use koakuma_core::{
+use korkuma_core::{
     context::ExecContext,
     domain::{ActionConfig, ConstraintExpr, Macro, ScriptLang, TriggerConfig},
     engine::EngineEvent,
@@ -16,7 +16,7 @@ use koakuma_core::{
     state::StateStore,
     traits::{Action, Outcome},
 };
-use koakuma_store::InMemoryStateStore;
+use korkuma_store::InMemoryStateStore;
 
 // ── aggregate_from_configs ────────────────────────────────────────────────────
 
@@ -42,8 +42,8 @@ fn aggregate_delay_yields_no_permissions() {
 
 #[test]
 fn aggregate_set_variable_yields_no_permissions() {
-    use koakuma_core::domain::VarScope;
-    use koakuma_core::value::Value;
+    use korkuma_core::domain::VarScope;
+    use korkuma_core::value::Value;
     let actions = [ActionConfig::SetVariable {
         scope: VarScope::Global,
         key: "k".into(),

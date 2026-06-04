@@ -1,6 +1,6 @@
 # `backend` — 能力分级、目标句柄与后端 trait
 
-> **Crate**: `koakuma-interact` · **文件**: `crates/interact/src/backend.rs`
+> **Crate**: `korkuma-interact` · **文件**: `crates/interact/src/backend.rs`
 > **最后同步**: 2026-06-04 (M2.3 初始实现)
 
 ## 职责
@@ -41,7 +41,7 @@ pub trait InteractionBackend: Send + Sync {
 
 ## 依赖关系
 
-- [`koakuma_core::domain`](../core/domain.md) — `TargetSelector`、`UiOp`、`UiPath`
+- [`korkuma_core::domain`](../core/domain.md) — `TargetSelector`、`UiOp`、`UiPath`
 - [`error`](error.md) — `BackendError`
 
 ## 设计说明

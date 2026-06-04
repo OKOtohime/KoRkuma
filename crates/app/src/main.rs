@@ -9,8 +9,8 @@ use std::sync::{Arc, Mutex};
 use notify::{EventKind, RecursiveMode, Watcher};
 use slint::{Model, ModelRc, VecModel};
 
-use koakuma_actions::register_all as register_actions;
-use koakuma_core::{
+use korkuma_actions::register_all as register_actions;
+use korkuma_core::{
     domain::{
         ActionConfig, ConstraintExpr, KeyCombo, Macro, ProcessEvent, TriggerConfig,
     },
@@ -19,12 +19,12 @@ use koakuma_core::{
     permission::aggregate_from_configs,
     state::StateStore,
 };
-use koakuma_hooks::register_trigger_specs;
-use koakuma_script::{
+use korkuma_hooks::register_trigger_specs;
+use korkuma_script::{
     register_actions as register_script_actions,
     register_constraints as register_script_constraints,
 };
-use koakuma_store::{InMemoryStateStore, load_macros, save_macros};
+use korkuma_store::{InMemoryStateStore, load_macros, save_macros};
 
 use tree_model::{
     ConstraintTreeRow, WorkflowTreeRow,
@@ -51,13 +51,13 @@ fn main() -> Result<(), slint::PlatformError> {
 
     let backend = select_backend();
 
-    println!("╔══════════════════════════════════════════╗");
-    println!("║   Koakuma  —  Automation Engine (M2.4)   ║");
-    println!("╚══════════════════════════════════════════╝");
-    println!("[koakuma] renderer: {backend}");
+    println!("╔════════════════════╗");
+    println!("║   KoRkuma (M2.4)   ║");
+    println!("╚════════════════════╝");
+    println!("[korkuma] renderer: {backend}");
 
     // ── 1. Registry ───────────────────────────────────────────────────────────
-    let mut registry = koakuma_core::registry::Registry::with_builtins();
+    let mut registry = korkuma_core::registry::Registry::with_builtins();
     register_trigger_specs(&mut registry);
     register_actions(&mut registry);
     register_script_actions(&mut registry);
@@ -71,7 +71,7 @@ fn main() -> Result<(), slint::PlatformError> {
     let ui = match MainWindow::new() {
         Ok(w) => w,
         Err(e) if backend == "winit-femtovg" => {
-            eprintln!("[koakuma] femtovg init failed ({e}); falling back to software renderer");
+            eprintln!("[korkuma] femtovg init failed ({e}); falling back to software renderer");
             // SAFETY: engine thread not yet spawned; Slint platform not yet committed.
             unsafe {
                 std::env::set_var("SLINT_BACKEND", "winit-software");
@@ -83,7 +83,7 @@ fn main() -> Result<(), slint::PlatformError> {
     {
         let locale = system_locale();
         if let Err(e) = slint::select_bundled_translation(&locale) {
-            eprintln!("[koakuma] i18n: no bundled translation for '{locale}': {e}");
+            eprintln!("[korkuma] i18n: no bundled translation for '{locale}': {e}");
         }
     }
     let ui_weak = ui.as_weak();
@@ -129,7 +129,7 @@ fn main() -> Result<(), slint::PlatformError> {
     match load_macros(std::path::Path::new(MACROS_PATH)) {
         Ok(loaded) => {
             println!(
-                "[koakuma] loaded {} macro(s) from {MACROS_PATH}",
+                "[korkuma] loaded {} macro(s) from {MACROS_PATH}",
                 loaded.len()
             );
             let mut guard = local_macros.lock().unwrap();
@@ -144,7 +144,7 @@ fn main() -> Result<(), slint::PlatformError> {
             }
         }
         Err(e) => {
-            eprintln!("[koakuma] could not load {MACROS_PATH}: {e}");
+            eprintln!("[korkuma] could not load {MACROS_PATH}: {e}");
         }
     }
 
@@ -435,7 +435,7 @@ fn main() -> Result<(), slint::PlatformError> {
                         serde_json::from_str::<ActionConfig>(row.params_json.as_str())
                     {
                         if let ActionConfig::Interact { target, on_no_background, .. } = &cfg {
-                            use koakuma_core::domain::{OnNoBackground, TargetSelector};
+                            use korkuma_core::domain::{OnNoBackground, TargetSelector};
                             let (ttype, tpat) = match target {
                                 TargetSelector::Foreground => ("Foreground", String::new()),
                                 TargetSelector::Window { title_pattern, .. } => {
@@ -1131,7 +1131,7 @@ fn spawn_file_watcher(
             let event = match res {
                 Ok(e) => e,
                 Err(e) => {
-                    eprintln!("[koakuma] watcher error: {e}");
+                    eprintln!("[korkuma] watcher error: {e}");
                     continue;
                 }
             };
@@ -1181,10 +1181,10 @@ fn spawn_file_watcher(
                         reload_ui_model(&ui, &macros);
                     });
 
-                    println!("[koakuma] hot-reloaded {MACROS_PATH}");
+                    println!("[korkuma] hot-reloaded {MACROS_PATH}");
                 }
                 Err(e) => {
-                    eprintln!("[koakuma] hot-reload failed: {e}; keeping current macros");
+                    eprintln!("[korkuma] hot-reload failed: {e}; keeping current macros");
                     let msg = format!("[WRN] hot-reload failed: {e}");
                     let _ = ui_weak.upgrade_in_event_loop(move |ui| {
                         let logs_rc = ui.get_logs();
@@ -1243,7 +1243,7 @@ fn reload_ui_model(ui: &MainWindow, macros: &[Macro]) {
 fn persist(macros: &[Macro], suppress_reload: &AtomicBool) {
     suppress_reload.store(true, Ordering::Relaxed);
     if let Err(e) = save_macros(std::path::Path::new(MACROS_PATH), macros) {
-        eprintln!("[koakuma] failed to save {MACROS_PATH}: {e}");
+        eprintln!("[korkuma] failed to save {MACROS_PATH}: {e}");
         suppress_reload.store(false, Ordering::Relaxed);
     }
 }
@@ -1278,7 +1278,7 @@ fn format_engine_event(ev: &EngineEvent) -> String {
 
 fn create_default_macro() -> Macro {
     let actions = vec![ActionConfig::Notify {
-        title: "Koakuma".to_string(),
+        title: "KoRkuma".to_string(),
         body: "Macro fired!".to_string(),
     }];
     let granted_permissions = aggregate_from_configs(&actions);
@@ -1372,30 +1372,30 @@ fn platform_has_hw_gl() -> bool {
 
 #[cfg(target_os = "windows")]
 fn start_hooks(
-    event_sink: koakuma_core::traits::EventSink,
-) -> Vec<Box<dyn koakuma_core::traits::HookProvider>> {
-    use koakuma_core::traits::HookProvider;
-    use koakuma_hooks::{HotkeyProvider, ProcessProvider, WindowFocusProvider};
+    event_sink: korkuma_core::traits::EventSink,
+) -> Vec<Box<dyn korkuma_core::traits::HookProvider>> {
+    use korkuma_core::traits::HookProvider;
+    use korkuma_hooks::{HotkeyProvider, ProcessProvider, WindowFocusProvider};
 
     let mut providers: Vec<Box<dyn HookProvider>> = Vec::new();
 
     let mut hotkey = HotkeyProvider::new();
     if let Err(e) = hotkey.start(event_sink.clone()) {
-        eprintln!("[koakuma] hotkey hook failed to start: {e}");
+        eprintln!("[korkuma] hotkey hook failed to start: {e}");
     } else {
         providers.push(Box::new(hotkey));
     }
 
     let mut window_focus = WindowFocusProvider::new();
     if let Err(e) = window_focus.start(event_sink.clone()) {
-        eprintln!("[koakuma] window_focus hook failed to start: {e}");
+        eprintln!("[korkuma] window_focus hook failed to start: {e}");
     } else {
         providers.push(Box::new(window_focus));
     }
 
     let mut process = ProcessProvider::new();
     if let Err(e) = process.start(event_sink) {
-        eprintln!("[koakuma] process hook failed to start: {e}");
+        eprintln!("[korkuma] process hook failed to start: {e}");
     } else {
         providers.push(Box::new(process));
     }

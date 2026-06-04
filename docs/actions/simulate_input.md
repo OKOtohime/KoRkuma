@@ -1,6 +1,6 @@
 # `simulate_input` — 键鼠输入模拟
 
-> **Crate**: `koakuma-actions` · **文件**: `crates/actions/src/simulate_input.rs`
+> **Crate**: `korkuma-actions` · **文件**: `crates/actions/src/simulate_input.rs`
 > **最后同步**: 2026-06-02
 > **平台实现**: Windows（`#[cfg(target_os = "windows")]`）；其他平台返回错误
 
@@ -44,13 +44,13 @@
 
 ## 依赖关系
 
-- `koakuma_core::domain::InputEvent` — 输入序列
-- `koakuma_core::permission` — 要求 `Permission::InputSimulation`
+- `korkuma_core::domain::InputEvent` — 输入序列
+- `korkuma_core::permission` — 要求 `Permission::InputSimulation`
 - 外部（仅 Windows）：`windows::Win32::UI::Input::KeyboardAndMouse`（`SendInput`）、`windows::Win32::UI::WindowsAndMessaging`（`GetSystemMetrics`）
 
 ## 设计说明
 
-**UIPI 限制**：在 Windows Vista+ 中，低权限进程无法向高权限窗口注入输入（User Interface Privilege Isolation）。若 `SendInput` 返回的成功数小于发送数，`execute` 返回 `ActionError::Failed("UIPI block?")`。解决方案是以 UAC 提权运行 Koakuma，或目标窗口同权限级别。
+**UIPI 限制**：在 Windows Vista+ 中，低权限进程无法向高权限窗口注入输入（User Interface Privilege Isolation）。若 `SendInput` 返回的成功数小于发送数，`execute` 返回 `ActionError::Failed("UIPI block?")`。解决方案是以 UAC 提权运行 KoRkuma，或目标窗口同权限级别。
 
 **无延迟**：事件序列之间无内置延迟。若应用需要响应时间（如等待弹出菜单），在序列间插入 `ActionConfig::Delay` Action。
 

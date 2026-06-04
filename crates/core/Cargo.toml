@@ -1,5 +1,5 @@
 [package]
-name = "koakuma-core"
+name = "korkuma-core"
 version = "0.1.0"
 edition = "2024"
 
@@ -14,6 +14,6 @@ futures           = { workspace = true }
 tokio             = { workspace = true }
 
 [dev-dependencies]
-koakuma-store = { workspace = true }
+korkuma-store = { workspace = true }
 tokio         = { workspace = true }
 async-trait   = { workspace = true }

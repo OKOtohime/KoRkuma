@@ -1,11 +1,11 @@
-# `koakuma-hooks` — 平台事件监听
+# `korkuma-hooks` — 平台事件监听
 
-> **Cargo 包名**: `koakuma-hooks` · **路径**: `crates/hooks/`
+> **Cargo 包名**: `korkuma-hooks` · **路径**: `crates/hooks/`
 > **最后同步**: 2026-06-02
 
 ## 职责概述
 
-`koakuma-hooks` 提供平台特定的 `HookProvider` 实现，负责监听操作系统事件（快捷键、窗口焦点、进程启停）并将其转换为 `Event` 推送到引擎的 `EventSink`。同时提供跨平台的 `TriggerSpec` 实现，用于在 `EventRouter` 中对各事件类型做细粒度匹配。
+`korkuma-hooks` 提供平台特定的 `HookProvider` 实现，负责监听操作系统事件（快捷键、窗口焦点、进程启停）并将其转换为 `Event` 推送到引擎的 `EventSink`。同时提供跨平台的 `TriggerSpec` 实现，用于在 `EventRouter` 中对各事件类型做细粒度匹配。
 
 ## 模块索引
 
@@ -19,7 +19,7 @@
 
 | Crate | 用途 |
 |-------|------|
-| `koakuma-core` | `HookProvider` trait、`TriggerSpec` trait、`EventSink`、`Event`、`EventKind`、域类型 |
+| `korkuma-core` | `HookProvider` trait、`TriggerSpec` trait、`EventSink`、`Event`、`EventKind`、域类型 |
 | `windows 0.58` | Win32 API 绑定（仅 `target_os = "windows"`） |
 
 ## Windows 功能特性
@@ -40,5 +40,5 @@ lib
  ├── trigger_spec   (cross-platform, no #[cfg])
  └── platform_windows  (#[cfg(target_os = "windows")])
          ↓
-   koakuma-core traits
+   korkuma-core traits
 ```

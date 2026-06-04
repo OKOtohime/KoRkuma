@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use koakuma_core::domain::{OnNoBackground, TargetSelector, UiOp};
-use koakuma_core::permission::{Permission, PermissionGrant};
+use korkuma_core::domain::{OnNoBackground, TargetSelector, UiOp};
+use korkuma_core::permission::{Permission, PermissionGrant};
 
 use crate::backend::{InteractionBackend, ResolvedTarget, Tier, UiNode};
 use crate::error::DispatchError;

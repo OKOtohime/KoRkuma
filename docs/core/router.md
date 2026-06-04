@@ -1,6 +1,6 @@
 # `router` — 事件路由与管道执行
 
-> **Crate**: `koakuma-core` · **文件**: `crates/core/src/router.rs`
+> **Crate**: `korkuma-core` · **文件**: `crates/core/src/router.rs`
 > **最后同步**: 2026-06-04 (M2.4 更新：新增 `dispatch_dry_run`；`execute_pipeline` 增加 `dry_run` 参数)
 
 ## 职责

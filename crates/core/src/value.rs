@@ -9,7 +9,7 @@ use std::collections::BTreeMap;
 /// # Examples
 ///
 /// ```rust
-/// use koakuma_core::value::Value;
+/// use korkuma_core::value::Value;
 /// use std::collections::BTreeMap;
 ///
 /// let int_val = Value::Int(42);

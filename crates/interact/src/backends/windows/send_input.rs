@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use koakuma_core::domain::{TargetSelector, UiOp};
+use korkuma_core::domain::{TargetSelector, UiOp};
 use windows::Win32::Foundation::HWND;
 use windows::Win32::UI::Input::KeyboardAndMouse::{
     INPUT, INPUT_0, INPUT_KEYBOARD, INPUT_MOUSE, KEYBDINPUT, KEYEVENTF_KEYUP,

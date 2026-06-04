@@ -1,6 +1,6 @@
 # `engine` — 引擎命令与事件协议
 
-> **Crate**: `koakuma-core` · **文件**: `crates/core/src/engine.rs`
+> **Crate**: `korkuma-core` · **文件**: `crates/core/src/engine.rs`
 > **最后同步**: 2026-06-04 (M2.4：新增 `DryRunMacro` 命令)
 
 ## 职责

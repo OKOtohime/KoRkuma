@@ -1,6 +1,6 @@
 # `notify` — 桌面通知
 
-> **Crate**: `koakuma-actions` · **文件**: `crates/actions/src/notify.rs`
+> **Crate**: `korkuma-actions` · **文件**: `crates/actions/src/notify.rs`
 > **最后同步**: 2026-06-02
 
 ## 职责
@@ -37,7 +37,7 @@ notify_rust::Notification::new()
 
 ## 依赖关系
 
-- `koakuma_core::domain::ActionConfig` — 配置入参
+- `korkuma_core::domain::ActionConfig` — 配置入参
 - 外部：`notify-rust 4`
 
 ## 设计说明

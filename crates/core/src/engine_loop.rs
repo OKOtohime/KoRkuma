@@ -50,12 +50,12 @@ impl EngineHandle {
     ///
     /// ```rust,no_run
     /// # use std::sync::Arc;
-    /// # use koakuma_core::engine_loop::start_engine;
-    /// # use koakuma_core::engine::EngineCommand;
-    /// # use koakuma_core::registry::Registry;
-    /// # use koakuma_store::InMemoryStateStore;
+    /// # use korkuma_core::engine_loop::start_engine;
+    /// # use korkuma_core::engine::EngineCommand;
+    /// # use korkuma_core::registry::Registry;
+    /// # use korkuma_store::InMemoryStateStore;
     /// let registry = Arc::new(Registry::with_builtins());
-    /// let store: Arc<dyn koakuma_core::state::StateStore> =
+    /// let store: Arc<dyn korkuma_core::state::StateStore> =
     ///     Arc::new(InMemoryStateStore::new());
     /// let (engine, _sink) = start_engine(registry, store, |_ev| {});
     /// let sender = engine.clone_sender();
@@ -99,13 +99,13 @@ impl Drop for EngineHandle {
 ///
 /// ```rust,no_run
 /// use std::sync::Arc;
-/// use koakuma_core::engine_loop::start_engine;
-/// use koakuma_core::engine::EngineCommand;
-/// use koakuma_core::registry::Registry;
-/// # use koakuma_store::InMemoryStateStore;
+/// use korkuma_core::engine_loop::start_engine;
+/// use korkuma_core::engine::EngineCommand;
+/// use korkuma_core::registry::Registry;
+/// # use korkuma_store::InMemoryStateStore;
 ///
 /// let registry = Arc::new(Registry::with_builtins());
-/// let store: Arc<dyn koakuma_core::state::StateStore> =
+/// let store: Arc<dyn korkuma_core::state::StateStore> =
 ///     Arc::new(InMemoryStateStore::new());
 ///
 /// let (engine, _event_sink) = start_engine(
@@ -128,7 +128,7 @@ where
     let handle_tx = cmd_tx.clone();
 
     let thread = thread::Builder::new()
-        .name("koakuma-engine".to_string())
+        .name("korkuma-engine".to_string())
         .spawn(move || engine_loop(cmd_rx, evt_rx, registry, store, on_event))
         .expect("failed to spawn engine thread");
 

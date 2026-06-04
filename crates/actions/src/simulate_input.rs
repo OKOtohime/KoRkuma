@@ -5,11 +5,11 @@
 //! [`ActionError::Failed`] with a clear message.
 
 use async_trait::async_trait;
-use koakuma_core::context::ExecContext;
-use koakuma_core::domain::{ActionConfig, InputEvent};
-use koakuma_core::error::ActionError;
-use koakuma_core::permission::{Permission, PermissionSet};
-use koakuma_core::traits::{Action, Outcome};
+use korkuma_core::context::ExecContext;
+use korkuma_core::domain::{ActionConfig, InputEvent};
+use korkuma_core::error::ActionError;
+use korkuma_core::permission::{Permission, PermissionSet};
+use korkuma_core::traits::{Action, Outcome};
 
 /// Injects a sequence of keyboard and mouse input events into the OS input stream.
 ///
@@ -58,7 +58,7 @@ pub fn build(c: &ActionConfig) -> Option<Box<dyn Action>> {
 
 #[cfg(target_os = "windows")]
 mod platform_impl {
-    use koakuma_core::domain::InputEvent;
+    use korkuma_core::domain::InputEvent;
     use windows::Win32::UI::Input::KeyboardAndMouse::{
         INPUT, INPUT_0, INPUT_KEYBOARD, INPUT_MOUSE, KEYBD_EVENT_FLAGS, KEYBDINPUT,
         KEYEVENTF_KEYUP, KEYEVENTF_UNICODE, MOUSE_EVENT_FLAGS, MOUSEEVENTF_ABSOLUTE,
@@ -235,7 +235,7 @@ mod platform_impl {
 
 #[cfg(not(target_os = "windows"))]
 mod platform_impl {
-    use koakuma_core::domain::InputEvent;
+    use korkuma_core::domain::InputEvent;
 
     pub fn send_sequence(_sequence: &[InputEvent]) -> Result<(), String> {
         Err("SimulateInput is not supported on this platform (Windows only in V1; Linux planned for M2.1)".to_string())

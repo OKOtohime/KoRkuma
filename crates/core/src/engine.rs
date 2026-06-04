@@ -7,7 +7,7 @@ use std::time::SystemTime;
 /// # Examples
 ///
 /// ```rust
-/// use koakuma_core::engine::LogLevel;
+/// use korkuma_core::engine::LogLevel;
 ///
 /// let level = LogLevel::Warn;
 /// assert!(matches!(level, LogLevel::Warn));
@@ -65,7 +65,7 @@ pub enum EngineEvent {
 /// # Examples
 ///
 /// ```rust
-/// use koakuma_core::engine::EngineSnapshot;
+/// use korkuma_core::engine::EngineSnapshot;
 ///
 /// let snap = EngineSnapshot { macros: vec![] };
 /// assert!(snap.macros.is_empty());

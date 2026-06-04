@@ -7,7 +7,7 @@ use std::path::PathBuf;
 /// # Examples
 ///
 /// ```rust
-/// use koakuma_core::permission::PathScope;
+/// use korkuma_core::permission::PathScope;
 /// use std::path::PathBuf;
 ///
 /// let exact  = PathScope::Exact(PathBuf::from("/home/user/notes.txt"));
@@ -31,7 +31,7 @@ pub enum PathScope {
 /// # Examples
 ///
 /// ```rust
-/// use koakuma_core::permission::{Permission, PathScope};
+/// use korkuma_core::permission::{Permission, PathScope};
 /// use std::path::PathBuf;
 ///
 /// let net   = Permission::Network;
@@ -68,7 +68,7 @@ pub enum Permission {
 /// # Examples
 ///
 /// ```rust
-/// use koakuma_core::permission::{Permission, PermissionSet};
+/// use korkuma_core::permission::{Permission, PermissionSet};
 ///
 /// let set = PermissionSet(vec![Permission::Network, Permission::RunCommand]);
 /// assert_eq!(set.0.len(), 2);
@@ -91,7 +91,7 @@ impl PermissionGrant {
     /// # Examples
     ///
     /// ```rust
-    /// use koakuma_core::permission::{Permission, PermissionGrant};
+    /// use korkuma_core::permission::{Permission, PermissionGrant};
     ///
     /// let grant = PermissionGrant::new(vec![Permission::Network]);
     /// assert!(grant.allows(&Permission::Network));
@@ -107,7 +107,7 @@ impl PermissionGrant {
     /// # Examples
     ///
     /// ```rust
-    /// use koakuma_core::permission::{Permission, PermissionSet, PermissionGrant};
+    /// use korkuma_core::permission::{Permission, PermissionSet, PermissionGrant};
     ///
     /// let set = PermissionSet(vec![Permission::RunCommand]);
     /// let grant = PermissionGrant::from_set(&set);
@@ -125,7 +125,7 @@ impl PermissionGrant {
     /// # Examples
     ///
     /// ```rust
-    /// use koakuma_core::permission::{Permission, PermissionGrant};
+    /// use korkuma_core::permission::{Permission, PermissionGrant};
     ///
     /// let grant = PermissionGrant::new(vec![Permission::Network]);
     /// assert!( grant.allows(&Permission::Network));
@@ -145,8 +145,8 @@ impl PermissionGrant {
 /// # Examples
 ///
 /// ```rust
-/// use koakuma_core::domain::ActionConfig;
-/// use koakuma_core::permission::{Permission, aggregate_from_configs};
+/// use korkuma_core::domain::ActionConfig;
+/// use korkuma_core::permission::{Permission, aggregate_from_configs};
 ///
 /// let actions = vec![
 ///     ActionConfig::RunCommand { program: "echo".to_string(), args: vec![], capture: false },

@@ -1,13 +1,13 @@
 # `state` — 状态存储抽象
 
-> **Crate**: `koakuma-core` · **文件**: `crates/core/src/state.rs`
+> **Crate**: `korkuma-core` · **文件**: `crates/core/src/state.rs`
 > **最后同步**: 2026-06-02
 
 ## 职责
 
 `state` 模块定义 `StateStore` trait，抽象全局键值变量存储。引擎和 Action 通过此 trait 读写跨宏共享的运行时状态，而不依赖具体实现（内存、SQLite、Redis 等）。
 
-测试使用 `koakuma-store::InMemoryStateStore`，生产部署可替换为持久化实现。
+测试使用 `korkuma-store::InMemoryStateStore`，生产部署可替换为持久化实现。
 
 ## 公开 API
 

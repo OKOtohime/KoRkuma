@@ -17,9 +17,9 @@ pub type EventSink = Sender<Event>;
 /// # Examples
 ///
 /// ```rust,no_run
-/// use koakuma_core::traits::{HookProvider, EventSink};
-/// use koakuma_core::event::EventKind;
-/// use koakuma_core::error::HookError;
+/// use korkuma_core::traits::{HookProvider, EventSink};
+/// use korkuma_core::event::EventKind;
+/// use korkuma_core::error::HookError;
 ///
 /// struct MyProvider;
 ///
@@ -55,8 +55,8 @@ pub trait HookProvider: Send {
 /// # Examples
 ///
 /// ```rust,no_run
-/// use koakuma_core::traits::TriggerSpec;
-/// use koakuma_core::event::{Event, EventKind};
+/// use korkuma_core::traits::TriggerSpec;
+/// use korkuma_core::event::{Event, EventKind};
 ///
 /// struct AlwaysMatches;
 ///
@@ -80,9 +80,9 @@ pub trait TriggerSpec: Send + Sync {
 /// # Examples
 ///
 /// ```rust,no_run
-/// use koakuma_core::traits::Constraint;
-/// use koakuma_core::context::EvalContext;
-/// use koakuma_core::error::ConstraintError;
+/// use korkuma_core::traits::Constraint;
+/// use korkuma_core::context::EvalContext;
+/// use korkuma_core::error::ConstraintError;
 ///
 /// struct AlwaysTrue;
 ///
@@ -107,7 +107,7 @@ pub trait Constraint: Send + Sync {
 /// # Examples
 ///
 /// ```rust
-/// use koakuma_core::traits::Outcome;
+/// use korkuma_core::traits::Outcome;
 ///
 /// fn decide(flag: bool) -> Outcome {
 ///     if flag { Outcome::Stop } else { Outcome::Continue }
@@ -136,10 +136,10 @@ pub enum Outcome {
 ///
 /// ```rust,no_run
 /// use async_trait::async_trait;
-/// use koakuma_core::traits::{Action, Outcome};
-/// use koakuma_core::context::ExecContext;
-/// use koakuma_core::error::ActionError;
-/// use koakuma_core::permission::PermissionSet;
+/// use korkuma_core::traits::{Action, Outcome};
+/// use korkuma_core::context::ExecContext;
+/// use korkuma_core::error::ActionError;
+/// use korkuma_core::permission::PermissionSet;
 ///
 /// struct NoOpAction;
 ///

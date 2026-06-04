@@ -5,7 +5,7 @@
 /// not from SystemTime::now()).
 use std::time::{Duration, UNIX_EPOCH};
 
-use koakuma_core::{
+use korkuma_core::{
     context::EvalContext,
     domain::{CompareOp, ConstraintConfig, ConstraintExpr},
     event::{Event, EventKind},
@@ -13,7 +13,7 @@ use koakuma_core::{
     state::StateStore,
     value::Value,
 };
-use koakuma_store::InMemoryStateStore;
+use korkuma_store::InMemoryStateStore;
 
 // ── helpers ────────────────────────────────────────────────────────────────
 

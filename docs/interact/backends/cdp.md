@@ -1,6 +1,6 @@
 # `backends/cdp` — Chrome DevTools Protocol 浏览器后端
 
-> **Crate**: `koakuma-interact` · **文件**: `crates/interact/src/backends/cdp.rs`
+> **Crate**: `korkuma-interact` · **文件**: `crates/interact/src/backends/cdp.rs`
 > **最后同步**: 2026-06-04 (M2.3 MVP)
 
 ## 职责

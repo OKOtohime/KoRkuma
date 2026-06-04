@@ -1,11 +1,11 @@
 # `trigger_spec` — 跨平台 TriggerSpec 实现
 
-> **Crate**: `koakuma-hooks` · **文件**: `crates/hooks/src/trigger_spec.rs`
+> **Crate**: `korkuma-hooks` · **文件**: `crates/hooks/src/trigger_spec.rs`
 > **最后同步**: 2026-06-02
 
 ## 职责
 
-提供三种 `TriggerSpec` 实现，对应 `koakuma-hooks` 生产的三类事件。这些 spec 在 `EventRouter` 的第二级过滤中调用：路由器先以 `EventKind` O(1) 粗筛，再调用 `matches()` 精筛。
+提供三种 `TriggerSpec` 实现，对应 `korkuma-hooks` 生产的三类事件。这些 spec 在 `EventRouter` 的第二级过滤中调用：路由器先以 `EventKind` O(1) 粗筛，再调用 `matches()` 精筛。
 
 该模块无任何平台条件编译，在所有目标 OS 上均可编译和测试。
 
@@ -81,13 +81,13 @@ impl ProcessTriggerSpec {
 ## 依赖关系
 
 依赖以下同 workspace 模块：
-- `koakuma_core::domain` — `KeyCombo`、`ProcessEvent`、`TriggerConfig`
-- `koakuma_core::event` — `Event`、`EventKind`
-- `koakuma_core::traits` — `TriggerSpec`
-- `koakuma_core::value` — `Value`
+- `korkuma_core::domain` — `KeyCombo`、`ProcessEvent`、`TriggerConfig`
+- `korkuma_core::event` — `Event`、`EventKind`
+- `korkuma_core::traits` — `TriggerSpec`
+- `korkuma_core::value` — `Value`
 
 ## 设计说明
 
 payload 字段读取使用 `payload.get("key")` 返回 `Option<&Value>` 的模式匹配。Rust 2024 edition 下 match ergonomics 会自动处理引用，无需显式 `ref`（已修正 M1.2 实现中的 4 处误用）。
 
-`regex` 字段保留在结构体中是为了将来在 M1.4 中接入 `koakuma-script` 的 Rhai 正则匹配，届时只需在 `WindowFocusTriggerSpec::matches` 中添加正则分支，调用方无需修改 `TriggerConfig` 数据格式。
+`regex` 字段保留在结构体中是为了将来在 M1.4 中接入 `korkuma-script` 的 Rhai 正则匹配，届时只需在 `WindowFocusTriggerSpec::matches` 中添加正则分支，调用方无需修改 `TriggerConfig` 数据格式。

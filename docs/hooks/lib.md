@@ -1,6 +1,6 @@
-# `lib` — koakuma-hooks crate 根
+# `lib` — korkuma-hooks crate 根
 
-> **Crate**: `koakuma-hooks` · **文件**: `crates/hooks/src/lib.rs`
+> **Crate**: `korkuma-hooks` · **文件**: `crates/hooks/src/lib.rs`
 > **最后同步**: 2026-06-02
 
 ## 职责
@@ -36,7 +36,7 @@ crate 根模块，声明子模块、通过条件 `pub use` 导出平台 provider
 依赖以下同 workspace 模块：
 - [`trigger_spec`](trigger_spec.md) — 工厂函数
 - [`platform_windows`](platform_windows.md) — Windows provider（条件编译）
-- `koakuma_core::registry::Registry` — 注册入参
+- `korkuma_core::registry::Registry` — 注册入参
 
 ## 设计说明
 

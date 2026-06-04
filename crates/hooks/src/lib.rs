@@ -1,4 +1,4 @@
-//! Platform-specific [`HookProvider`](koakuma_core::traits::HookProvider) implementations.
+//! Platform-specific [`HookProvider`](korkuma_core::traits::HookProvider) implementations.
 //!
 //! # Provided providers
 //!
@@ -15,8 +15,8 @@
 //! # Usage
 //!
 //! ```rust,no_run
-//! use koakuma_core::registry::Registry;
-//! use koakuma_hooks::register_trigger_specs;
+//! use korkuma_core::registry::Registry;
+//! use korkuma_hooks::register_trigger_specs;
 //!
 //! let mut registry = Registry::with_builtins();
 //! register_trigger_specs(&mut registry);
@@ -34,9 +34,9 @@ pub use platform_windows::{HotkeyProvider, ProcessProvider, WindowFocusProvider}
 
 pub use trigger_spec::{HotkeyTriggerSpec, ProcessTriggerSpec, WindowFocusTriggerSpec};
 
-use koakuma_core::registry::Registry;
+use korkuma_core::registry::Registry;
 
-/// Registers [`TriggerSpec`](koakuma_core::traits::TriggerSpec) factories for all three
+/// Registers [`TriggerSpec`](korkuma_core::traits::TriggerSpec) factories for all three
 /// hook event kinds into `registry`.
 ///
 /// Call this from `app` startup after [`Registry::with_builtins`].
@@ -44,8 +44,8 @@ use koakuma_core::registry::Registry;
 /// # Examples
 ///
 /// ```rust,no_run
-/// use koakuma_core::registry::Registry;
-/// use koakuma_hooks::register_trigger_specs;
+/// use korkuma_core::registry::Registry;
+/// use korkuma_hooks::register_trigger_specs;
 ///
 /// let mut registry = Registry::with_builtins();
 /// register_trigger_specs(&mut registry);

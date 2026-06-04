@@ -1,6 +1,6 @@
 # `event` — 事件类型与管道入口
 
-> **Crate**: `koakuma-core` · **文件**: `crates/core/src/event.rs`
+> **Crate**: `korkuma-core` · **文件**: `crates/core/src/event.rs`
 > **最后同步**: 2026-06-02
 
 ## 职责
@@ -46,4 +46,4 @@
 
 `EventKind` 实现了 `Copy + Hash + Eq`，可直接作为 `HashMap` 键使用，是 `EventRouter` O(1) 分发的基础。
 
-`payload` 使用 `Value`（而非 `serde_json::Value`）以避免 `koakuma-core` 在类型层面硬依赖 serde_json 的具体类型。
+`payload` 使用 `Value`（而非 `serde_json::Value`）以避免 `korkuma-core` 在类型层面硬依赖 serde_json 的具体类型。

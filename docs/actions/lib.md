@@ -1,6 +1,6 @@
-# `lib` — koakuma-actions crate 根
+# `lib` — korkuma-actions crate 根
 
-> **Crate**: `koakuma-actions` · **文件**: `crates/actions/src/lib.rs`
+> **Crate**: `korkuma-actions` · **文件**: `crates/actions/src/lib.rs`
 > **最后同步**: 2026-06-02
 
 ## 职责
@@ -28,8 +28,8 @@
 - [`run_command`](run_command.md) — `build` factory
 - [`notify`](notify.md) — `build` factory
 - [`simulate_input`](simulate_input.md) — `build` factory
-- `koakuma_core::registry::Registry` — 注册入参
+- `korkuma_core::registry::Registry` — 注册入参
 
 ## 设计说明
 
-`SetVariable` 和 `Delay` 已在 `koakuma-core/builtins` 预注册（通过 `Registry::with_builtins()`），因此 `register_all` 无需处理它们。
+`SetVariable` 和 `Delay` 已在 `korkuma-core/builtins` 预注册（通过 `Registry::with_builtins()`），因此 `register_all` 无需处理它们。

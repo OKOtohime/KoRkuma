@@ -1,11 +1,11 @@
 # `builtins` — 平台无关内置实现
 
-> **Crate**: `koakuma-core` · **文件**: `crates/core/src/builtins.rs`
+> **Crate**: `korkuma-core` · **文件**: `crates/core/src/builtins.rs`
 > **最后同步**: 2026-06-03 (M2.1：Action 异步化)
 
 ## 职责
 
-`builtins` 模块提供所有平台无关的 `TriggerSpec`、`Constraint`、`Action` 内置实现，并在 `Registry::with_builtins()` 中统一注册。平台特定实现（如 Win32 快捷键、窗口焦点）放在 `koakuma-hooks` 和 `koakuma-constraints`，在 `app` 启动时追加注册。
+`builtins` 模块提供所有平台无关的 `TriggerSpec`、`Constraint`、`Action` 内置实现，并在 `Registry::with_builtins()` 中统一注册。平台特定实现（如 Win32 快捷键、窗口焦点）放在 `korkuma-hooks` 和 `korkuma-constraints`，在 `app` 启动时追加注册。
 
 该模块的所有类型均为 `pub(crate)`，不对外暴露具体实现，外部代码只通过 `Registry` 工厂访问这些能力。
 

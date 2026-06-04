@@ -2,7 +2,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use async_trait::async_trait;
 use futures::{SinkExt, StreamExt};
-use koakuma_core::domain::{TargetSelector, UiOp};
+use korkuma_core::domain::{TargetSelector, UiOp};
 use serde_json::{Value, json};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio_tungstenite::{connect_async, tungstenite::Message};
@@ -20,8 +20,8 @@ use crate::error::BackendError;
 /// Start the browser with `--remote-debugging-port=9222`, then register this backend:
 ///
 /// ```rust,no_run
-/// use koakuma_interact::backends::cdp::CdpBackend;
-/// use koakuma_interact::negotiator::BackendRegistry;
+/// use korkuma_interact::backends::cdp::CdpBackend;
+/// use korkuma_interact::negotiator::BackendRegistry;
 ///
 /// let mut reg = BackendRegistry::new();
 /// reg.register(CdpBackend::new(9222));

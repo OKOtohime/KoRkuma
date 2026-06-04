@@ -9,7 +9,7 @@ use std::time::SystemTime;
 /// # Examples
 ///
 /// ```rust
-/// use koakuma_core::event::EventKind;
+/// use korkuma_core::event::EventKind;
 ///
 /// let kind = EventKind::Hotkey;
 /// assert_eq!(kind, EventKind::Hotkey);
@@ -31,8 +31,8 @@ pub enum EventKind {
 /// # Examples
 ///
 /// ```rust
-/// use koakuma_core::event::{Event, EventKind};
-/// use koakuma_core::value::Value;
+/// use korkuma_core::event::{Event, EventKind};
+/// use korkuma_core::value::Value;
 /// use std::time::SystemTime;
 ///
 /// let event = Event {

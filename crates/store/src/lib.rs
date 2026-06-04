@@ -14,9 +14,9 @@ use std::collections::BTreeMap;
 use std::path::Path;
 use std::sync::Mutex;
 
-use koakuma_core::domain::Macro;
-use koakuma_core::state::StateStore;
-use koakuma_core::value::Value;
+use korkuma_core::domain::Macro;
+use korkuma_core::state::StateStore;
+use korkuma_core::value::Value;
 use thiserror::Error;
 
 // ── Error ─────────────────────────────────────────────────────────────────────
@@ -26,7 +26,7 @@ use thiserror::Error;
 /// # Examples
 ///
 /// ```rust
-/// use koakuma_store::StoreError;
+/// use korkuma_store::StoreError;
 ///
 /// let io_err: StoreError = std::io::Error::from(std::io::ErrorKind::PermissionDenied).into();
 /// assert!(matches!(io_err, StoreError::Io(_)));
@@ -56,7 +56,7 @@ pub enum StoreError {
 /// # Examples
 ///
 /// ```rust,no_run
-/// use koakuma_store::load_macros;
+/// use korkuma_store::load_macros;
 ///
 /// let macros = load_macros(std::path::Path::new("macros.json")).unwrap();
 /// println!("loaded {} macro(s)", macros.len());
@@ -83,7 +83,7 @@ pub fn load_macros(path: &Path) -> Result<Vec<Macro>, StoreError> {
 /// # Examples
 ///
 /// ```rust,no_run
-/// use koakuma_store::save_macros;
+/// use korkuma_store::save_macros;
 ///
 /// save_macros(std::path::Path::new("macros.json"), &[]).unwrap();
 /// ```
@@ -105,9 +105,9 @@ pub fn save_macros(path: &Path, macros: &[Macro]) -> Result<(), StoreError> {
 /// # Examples
 ///
 /// ```rust
-/// use koakuma_store::InMemoryStateStore;
-/// use koakuma_core::state::StateStore;
-/// use koakuma_core::value::Value;
+/// use korkuma_store::InMemoryStateStore;
+/// use korkuma_core::state::StateStore;
+/// use korkuma_core::value::Value;
 ///
 /// let store = InMemoryStateStore::new();
 /// store.set("hits", Value::Int(0));
@@ -125,8 +125,8 @@ impl InMemoryStateStore {
     /// # Examples
     ///
     /// ```rust
-    /// use koakuma_store::InMemoryStateStore;
-    /// use koakuma_core::state::StateStore;
+    /// use korkuma_store::InMemoryStateStore;
+    /// use korkuma_core::state::StateStore;
     ///
     /// let store = InMemoryStateStore::new();
     /// assert!(store.snapshot().is_empty());

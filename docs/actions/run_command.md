@@ -1,6 +1,6 @@
 # `run_command` — 外部进程执行
 
-> **Crate**: `koakuma-actions` · **文件**: `crates/actions/src/run_command.rs`
+> **Crate**: `korkuma-actions` · **文件**: `crates/actions/src/run_command.rs`
 > **最后同步**: 2026-06-02
 
 ## 职责
@@ -32,11 +32,11 @@
 
 ## 依赖关系
 
-- `koakuma_core::permission` — 要求 `Permission::RunCommand` 已授权
-- `koakuma_core::context::ExecContext` — 访问 `permissions` 和 `log`
+- `korkuma_core::permission` — 要求 `Permission::RunCommand` 已授权
+- `korkuma_core::context::ExecContext` — 访问 `permissions` 和 `log`
 
 ## 设计说明
 
 `capture = false` 使子进程在后台独立运行，父进程（引擎线程）不阻塞。这是 V1 的设计选择；V2 异步化后，`capture = true` 也将改为非阻塞等待（`tokio::process::Command`）。
 
-权限检查在 `execute` 入口做，而非 `build` 时——与 `koakuma-core` 设计保持一致：build 只构造，execute 才强制授权。
+权限检查在 `execute` 入口做，而非 `build` 时——与 `korkuma-core` 设计保持一致：build 只构造，execute 才强制授权。

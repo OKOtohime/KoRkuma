@@ -1,15 +1,15 @@
 use std::sync::Arc;
 
-use koakuma_core::context::{CancellationToken, ExecContext, LogHandle, ResourcePool};
-use koakuma_core::domain::{ActionConfig, OnNoBackground, TargetSelector, UiOp};
-use koakuma_core::event::{Event, EventKind};
-use koakuma_core::permission::{Permission, PermissionGrant};
-use koakuma_core::registry::Registry;
-use koakuma_core::value::Value;
-use koakuma_interact::backend::Tier;
-use koakuma_interact::backends::StubBackend;
-use koakuma_interact::{BackendRegistry, register_actions};
-use koakuma_store::InMemoryStateStore;
+use korkuma_core::context::{CancellationToken, ExecContext, LogHandle, ResourcePool};
+use korkuma_core::domain::{ActionConfig, OnNoBackground, TargetSelector, UiOp};
+use korkuma_core::event::{Event, EventKind};
+use korkuma_core::permission::{Permission, PermissionGrant};
+use korkuma_core::registry::Registry;
+use korkuma_core::value::Value;
+use korkuma_interact::backend::Tier;
+use korkuma_interact::backends::StubBackend;
+use korkuma_interact::{BackendRegistry, register_actions};
+use korkuma_store::InMemoryStateStore;
 use std::time::SystemTime;
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -179,7 +179,7 @@ async fn browser_tab_dispatch_succeeds() {
 
 #[test]
 fn interact_aggregate_window_permissions() {
-    use koakuma_core::permission::aggregate_from_configs;
+    use korkuma_core::permission::aggregate_from_configs;
 
     let actions = vec![click_cfg(OnNoBackground::Fail)];
     let set = aggregate_from_configs(&actions);
@@ -190,7 +190,7 @@ fn interact_aggregate_window_permissions() {
 
 #[test]
 fn interact_aggregate_degrade_adds_takeover() {
-    use koakuma_core::permission::aggregate_from_configs;
+    use korkuma_core::permission::aggregate_from_configs;
 
     let actions = vec![click_cfg(OnNoBackground::Degrade)];
     let set = aggregate_from_configs(&actions);
@@ -200,7 +200,7 @@ fn interact_aggregate_degrade_adds_takeover() {
 
 #[test]
 fn interact_aggregate_browser_permissions() {
-    use koakuma_core::permission::aggregate_from_configs;
+    use korkuma_core::permission::aggregate_from_configs;
 
     let actions = vec![ActionConfig::Interact {
         target: TargetSelector::BrowserTab { url_pattern: "example.com".into() },

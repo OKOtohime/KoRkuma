@@ -1,6 +1,6 @@
 # `error` — 后端与分发错误类型
 
-> **Crate**: `koakuma-interact` · **文件**: `crates/interact/src/error.rs`
+> **Crate**: `korkuma-interact` · **文件**: `crates/interact/src/error.rs`
 > **最后同步**: 2026-06-04 (M2.3 初始实现)
 
 ## 职责

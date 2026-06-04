@@ -1,6 +1,6 @@
 # `tree_model` — 约束/工作流扁平树模型与编辑操作
 
-> **Crate**: `koakuma-app` · **文件**: `crates/app/src/tree_model.rs`
+> **Crate**: `korkuma-app` · **文件**: `crates/app/src/tree_model.rs`
 > **最后同步**: 2026-06-04 (M2.4：新增模块)
 
 ## 职责
@@ -12,7 +12,7 @@ Slint 的 `ListView` 需要扁平的 `VecModel`；而 `ConstraintExpr`/`Workflow
 - **深度优先展开**（`flatten_*`）：树 → `Vec<*TreeRow>`，每行携带 `depth`（缩进深度）、`kind`（节点类型）、`summary`（人类可读摘要）、`params_json`（可编辑的 JSON 参数）。
 - **原位编辑**：通过平铺行的序号（flat position）找到树中对应节点，执行插入/删除/更新。
 
-该模块是 `koakuma-app` 内部私有模块（`mod tree_model`），不向外 crate 暴露。
+该模块是 `korkuma-app` 内部私有模块（`mod tree_model`），不向外 crate 暴露。
 
 ## 公开 API（crate 内可见）
 
@@ -71,8 +71,8 @@ Slint 的 `ListView` 需要扁平的 `VecModel`；而 `ConstraintExpr`/`Workflow
 
 ## 依赖关系
 
-- `koakuma_core::domain` — `ConstraintExpr`、`ConstraintConfig`、`WorkflowNode`、`ActionConfig`、`TargetSelector`、`UiOp`、`OnNoBackground`
-- `koakuma_core::value` — `Value`（`VarCompare` 默认值）
+- `korkuma_core::domain` — `ConstraintExpr`、`ConstraintConfig`、`WorkflowNode`、`ActionConfig`、`TargetSelector`、`UiOp`、`OnNoBackground`
+- `korkuma_core::value` — `Value`（`VarCompare` 默认值）
 - `serde_json` — 序列化/反序列化 params JSON
 
 ## 设计说明

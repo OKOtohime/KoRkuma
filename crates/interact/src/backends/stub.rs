@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use koakuma_core::domain::{TargetSelector, UiOp};
+use korkuma_core::domain::{TargetSelector, UiOp};
 
 use crate::backend::{InteractionBackend, ResolvedTarget, TargetInner, Tier, UiNode};
 use crate::error::BackendError;

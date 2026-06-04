@@ -3,8 +3,8 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-msgid "Koakuma — Automation Engine"
-msgstr "Koakuma — 自动化引擎"
+msgid "KoRkuma"
+msgstr "KoRkuma"
 
 msgid "Macros"
 msgstr "宏"

@@ -1,4 +1,4 @@
-/// M2.1 integration tests for the async workflow engine (`koakuma_core::workflow`).
+/// M2.1 integration tests for the async workflow engine (`korkuma_core::workflow`).
 ///
 /// Exercises every control-flow node — Seq, Parallel, If, While, ForEach, Retry,
 /// Timeout, Wait — through `run_workflow`, using `InMemoryStateStore` to observe
@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Instant, SystemTime};
 
 use async_trait::async_trait;
-use koakuma_core::{
+use korkuma_core::{
     context::{CancellationToken, EvalContext, ExecContext, LogHandle},
     domain::{
         ActionConfig, CompareOp, ConstraintConfig, ConstraintExpr, VarScope, WaitCondition,
@@ -22,7 +22,7 @@ use koakuma_core::{
     traits::{Action, Outcome},
     value::Value,
 };
-use koakuma_store::InMemoryStateStore;
+use korkuma_store::InMemoryStateStore;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -158,7 +158,7 @@ async fn seq_runs_children_in_order() {
     let (store, reg) = fresh();
     let wf = WorkflowNode::Seq(vec![action("inc"), action("inc"), action("inc")]);
     let mut ctx = exec_ctx(Arc::clone(&store), vec![]);
-    let events = koakuma_core::workflow::run_workflow(&wf, &mut ctx, &reg).await;
+    let events = korkuma_core::workflow::run_workflow(&wf, &mut ctx, &reg).await;
     assert!(events.is_empty(), "no errors expected: {events:?}");
     assert_eq!(counter(&store), 3);
 }
@@ -168,7 +168,7 @@ async fn seq_halts_on_stop() {
     let (store, reg) = fresh();
     let wf = WorkflowNode::Seq(vec![action("inc"), action("stop"), action("inc")]);
     let mut ctx = exec_ctx(Arc::clone(&store), vec![]);
-    koakuma_core::workflow::run_workflow(&wf, &mut ctx, &reg).await;
+    korkuma_core::workflow::run_workflow(&wf, &mut ctx, &reg).await;
     assert_eq!(counter(&store), 1, "action after Stop must not run");
 }
 
@@ -190,7 +190,7 @@ async fn if_true_runs_then_branch() {
         otherwise: Some(Box::new(action("stop"))),
     };
     let mut ctx = exec_ctx(Arc::clone(&store), vec![]);
-    koakuma_core::workflow::run_workflow(&wf, &mut ctx, &reg).await;
+    korkuma_core::workflow::run_workflow(&wf, &mut ctx, &reg).await;
     assert_eq!(counter(&store), 1);
 }
 
@@ -210,7 +210,7 @@ async fn if_false_runs_otherwise_branch() {
         otherwise: Some(Box::new(action("inc"))), // both branches increment; only one should run
     };
     let mut ctx = exec_ctx(Arc::clone(&store), vec![]);
-    koakuma_core::workflow::run_workflow(&wf, &mut ctx, &reg).await;
+    korkuma_core::workflow::run_workflow(&wf, &mut ctx, &reg).await;
     assert_eq!(counter(&store), 1, "exactly one branch runs");
 }
 
@@ -233,7 +233,7 @@ async fn while_loops_until_condition_false() {
         max_iter: 100,
     };
     let mut ctx = exec_ctx(Arc::clone(&store), vec![]);
-    koakuma_core::workflow::run_workflow(&wf, &mut ctx, &reg).await;
+    korkuma_core::workflow::run_workflow(&wf, &mut ctx, &reg).await;
     assert_eq!(counter(&store), 3);
 }
 
@@ -254,7 +254,7 @@ async fn while_is_bounded_by_max_iter() {
         max_iter: 5,
     };
     let mut ctx = exec_ctx(Arc::clone(&store), vec![]);
-    koakuma_core::workflow::run_workflow(&wf, &mut ctx, &reg).await;
+    korkuma_core::workflow::run_workflow(&wf, &mut ctx, &reg).await;
     assert_eq!(counter(&store), 5, "max_iter must bound the loop");
 }
 
@@ -269,7 +269,7 @@ async fn foreach_runs_body_per_element() {
         body: Box::new(action("inc")),
     };
     let mut ctx = exec_ctx(Arc::clone(&store), vec![]);
-    koakuma_core::workflow::run_workflow(&wf, &mut ctx, &reg).await;
+    korkuma_core::workflow::run_workflow(&wf, &mut ctx, &reg).await;
     assert_eq!(counter(&store), 3);
 }
 
@@ -287,7 +287,7 @@ async fn retry_succeeds_after_failures() {
         backoff_ms: 0,
     };
     let mut ctx = exec_ctx(Arc::clone(&store), vec![]);
-    koakuma_core::workflow::run_workflow(&wf, &mut ctx, &reg).await;
+    korkuma_core::workflow::run_workflow(&wf, &mut ctx, &reg).await;
     assert_eq!(*attempts.lock().unwrap(), 3, "should retry up to success");
     assert_eq!(store.get("succeeded"), Some(Value::Bool(true)));
 }
@@ -304,7 +304,7 @@ async fn retry_gives_up_after_max_attempts() {
         backoff_ms: 0,
     };
     let mut ctx = exec_ctx(Arc::clone(&store), vec![]);
-    let events = koakuma_core::workflow::run_workflow(&wf, &mut ctx, &reg).await;
+    let events = korkuma_core::workflow::run_workflow(&wf, &mut ctx, &reg).await;
     assert_eq!(*attempts.lock().unwrap(), 3, "exactly `times` attempts");
     assert!(
         events
@@ -327,7 +327,7 @@ async fn timeout_fails_a_slow_body() {
     };
     let mut ctx = exec_ctx(Arc::clone(&store), vec![]);
     let start = Instant::now();
-    let events = koakuma_core::workflow::run_workflow(&wf, &mut ctx, &reg).await;
+    let events = korkuma_core::workflow::run_workflow(&wf, &mut ctx, &reg).await;
     assert!(
         start.elapsed().as_millis() < 2_000,
         "timeout must abort early"
@@ -347,7 +347,7 @@ async fn parallel_runs_all_branches() {
     let (store, reg) = fresh();
     let wf = WorkflowNode::Parallel(vec![action("inc"), action("inc"), action("inc")]);
     let mut ctx = exec_ctx(Arc::clone(&store), vec![]);
-    koakuma_core::workflow::run_workflow(&wf, &mut ctx, &reg).await;
+    korkuma_core::workflow::run_workflow(&wf, &mut ctx, &reg).await;
     assert_eq!(
         counter(&store),
         3,
@@ -365,7 +365,7 @@ async fn parallel_isolates_local_variables() {
         value: Value::Int(99),
     })]);
     let mut ctx = exec_ctx(Arc::clone(&store), vec![]);
-    koakuma_core::workflow::run_workflow(&wf, &mut ctx, &reg).await;
+    korkuma_core::workflow::run_workflow(&wf, &mut ctx, &reg).await;
     assert!(
         !ctx.locals.contains_key("branch_local"),
         "forked locals stay isolated"
@@ -384,7 +384,7 @@ async fn wait_duration_completes() {
         action("inc"),
     ]);
     let mut ctx = exec_ctx(Arc::clone(&store), vec![]);
-    let events = koakuma_core::workflow::run_workflow(&wf, &mut ctx, &reg).await;
+    let events = korkuma_core::workflow::run_workflow(&wf, &mut ctx, &reg).await;
     assert!(events.is_empty());
     assert_eq!(counter(&store), 1, "Wait then continue");
 }
@@ -394,7 +394,7 @@ async fn wait_duration_completes() {
 #[tokio::test]
 async fn legacy_flat_actions_run_sequentially() {
     let (store, reg) = fresh();
-    let m = koakuma_core::domain::Macro {
+    let m = korkuma_core::domain::Macro {
         id: uuid::Uuid::nil(),
         name: "legacy".into(),
         description: String::new(),
@@ -419,7 +419,7 @@ async fn legacy_flat_actions_run_sequentially() {
     };
     let root = m.root_workflow();
     let mut ctx = exec_ctx(Arc::clone(&store), vec![]);
-    koakuma_core::workflow::run_workflow(&root, &mut ctx, &reg).await;
+    korkuma_core::workflow::run_workflow(&root, &mut ctx, &reg).await;
     assert_eq!(
         counter(&store),
         2,

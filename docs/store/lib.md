@@ -1,13 +1,13 @@
 # `lib` — InMemoryStateStore + JSON 宏持久化
 
-> **Crate**: `koakuma-store` · **文件**: `crates/store/src/lib.rs`
+> **Crate**: `korkuma-store` · **文件**: `crates/store/src/lib.rs`
 > **最后同步**: 2026-06-02
 
 ## 职责
 
-`koakuma-store` 承担两个互相独立的职责：
+`korkuma-store` 承担两个互相独立的职责：
 
-1. **运行时状态存储** — `InMemoryStateStore` 实现 `koakuma_core::state::StateStore` trait，以 `Mutex<BTreeMap>` 为底层容器，提供线程安全的键值读写，供引擎线程中的 Action 和 Constraint 共享全局变量。
+1. **运行时状态存储** — `InMemoryStateStore` 实现 `korkuma_core::state::StateStore` trait，以 `Mutex<BTreeMap>` 为底层容器，提供线程安全的键值读写，供引擎线程中的 Action 和 Constraint 共享全局变量。
 
 2. **宏配置持久化** — `load_macros` 和 `save_macros` 提供 `macros.json` 的原子读写：保存时先写 `.tmp` 再 rename，保证崩溃不会留下损坏的配置文件；读取时对"文件不存在"返回空列表而非错误，简化调用端逻辑。
 
@@ -51,9 +51,9 @@
 
 ## 依赖关系
 
-- [`koakuma_core::domain::Macro`](../core/domain.md) — 序列化/反序列化目标类型
-- `koakuma_core::state::StateStore` — `InMemoryStateStore` 实现该 trait
-- `koakuma_core::value::Value` — 存储值类型
+- [`korkuma_core::domain::Macro`](../core/domain.md) — 序列化/反序列化目标类型
+- `korkuma_core::state::StateStore` — `InMemoryStateStore` 实现该 trait
+- `korkuma_core::value::Value` — 存储值类型
 - `serde_json` — JSON 序列化
 - `thiserror` — `StoreError` 的 `#[derive(Error)]`
 

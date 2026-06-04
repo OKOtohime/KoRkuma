@@ -1,6 +1,6 @@
 # `permission` — 权限声明与运行时授权
 
-> **Crate**: `koakuma-core` · **文件**: `crates/core/src/permission.rs`
+> **Crate**: `korkuma-core` · **文件**: `crates/core/src/permission.rs`
 > **最后同步**: 2026-06-04 (M2.3：新增 `WindowInteraction`、`BrowserControl`、`ForegroundTakeover`；`aggregate_from_configs` 重构)
 
 ## 职责

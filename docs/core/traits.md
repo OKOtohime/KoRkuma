@@ -1,11 +1,11 @@
 # `traits` — 核心扩展点 trait
 
-> **Crate**: `koakuma-core` · **文件**: `crates/core/src/traits.rs`
+> **Crate**: `korkuma-core` · **文件**: `crates/core/src/traits.rs`
 > **最后同步**: 2026-06-03 (M2.2：`Action` 新增 `resources()` 方法)
 
 ## 职责
 
-`traits` 模块定义平台的核心扩展接口。第三方开发者（或平台内置的 `koakuma-actions`、`koakuma-hooks`、`koakuma-constraints`）通过实现这些 trait 向平台注入能力，所有实现均通过 `Registry` 注册，与核心引擎解耦。
+`traits` 模块定义平台的核心扩展接口。第三方开发者（或平台内置的 `korkuma-actions`、`korkuma-hooks`、`korkuma-constraints`）通过实现这些 trait 向平台注入能力，所有实现均通过 `Registry` 注册，与核心引擎解耦。
 
 ## 公开 API
 

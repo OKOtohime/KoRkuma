@@ -1,6 +1,6 @@
 # `scheduler` — 工作流调度器
 
-> **Crate**: `koakuma-core` · **文件**: `crates/core/src/scheduler.rs`
+> **Crate**: `korkuma-core` · **文件**: `crates/core/src/scheduler.rs`
 > **最后同步**: 2026-06-03 (M2.2 新增)
 
 ## 职责

@@ -4,15 +4,15 @@ use std::collections::BTreeMap;
 /// Thread-safe key-value store for variables shared across macro executions.
 ///
 /// The engine and action implementations access global state through this trait.
-/// Use `koakuma_store::InMemoryStateStore` for development and testing; replace
+/// Use `korkuma_store::InMemoryStateStore` for development and testing; replace
 /// with a persistent implementation for production deployments.
 ///
 /// # Examples
 ///
 /// ```rust
-/// # use koakuma_store::InMemoryStateStore;
-/// use koakuma_core::state::StateStore;
-/// use koakuma_core::value::Value;
+/// # use korkuma_store::InMemoryStateStore;
+/// use korkuma_core::state::StateStore;
+/// use korkuma_core::value::Value;
 ///
 /// let store = InMemoryStateStore::new();
 /// store.set("x", Value::Int(10));
@@ -26,9 +26,9 @@ pub trait StateStore: Send + Sync {
     /// # Examples
     ///
     /// ```rust
-    /// # use koakuma_store::InMemoryStateStore;
-    /// use koakuma_core::state::StateStore;
-    /// use koakuma_core::value::Value;
+    /// # use korkuma_store::InMemoryStateStore;
+    /// use korkuma_core::state::StateStore;
+    /// use korkuma_core::value::Value;
     ///
     /// let store = InMemoryStateStore::new();
     /// assert_eq!(store.get("missing"), None);
@@ -42,9 +42,9 @@ pub trait StateStore: Send + Sync {
     /// # Examples
     ///
     /// ```rust
-    /// # use koakuma_store::InMemoryStateStore;
-    /// use koakuma_core::state::StateStore;
-    /// use koakuma_core::value::Value;
+    /// # use korkuma_store::InMemoryStateStore;
+    /// use korkuma_core::state::StateStore;
+    /// use korkuma_core::value::Value;
     ///
     /// let store = InMemoryStateStore::new();
     /// store.set("n", Value::Int(1));
@@ -61,9 +61,9 @@ pub trait StateStore: Send + Sync {
     /// # Examples
     ///
     /// ```rust
-    /// # use koakuma_store::InMemoryStateStore;
-    /// use koakuma_core::state::StateStore;
-    /// use koakuma_core::value::Value;
+    /// # use korkuma_store::InMemoryStateStore;
+    /// use korkuma_core::state::StateStore;
+    /// use korkuma_core::value::Value;
     ///
     /// let store = InMemoryStateStore::new();
     /// store.set("tmp", Value::Str("hello".to_string()));

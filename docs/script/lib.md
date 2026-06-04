@@ -1,13 +1,13 @@
 # `lib` — Rhai 脚本集成（RunScript + Expression DSL）
 
-> **Crate**: `koakuma-script` · **文件**: `crates/script/src/lib.rs`
+> **Crate**: `korkuma-script` · **文件**: `crates/script/src/lib.rs`
 > **最后同步**: 2026-06-03 (M2.1：`RunScriptAction` 异步化)
 
 ## 职责
 
 > **M2.1**：`RunScriptAction` 改为 `#[async_trait]` 的 `async fn execute`。脚本仍同步执行（Rhai 引擎无内部 await 点，future 因此为 `Send`）；`ExpressionConstraint::evaluate` 保持同步。新增 `async-trait` 依赖。
 
-`koakuma-script` 是 M1.4 引入的脚本执行层，将 Rhai 嵌入式脚本引擎接入 Koakuma 管道，提供两个能力：
+`korkuma-script` 是 M1.4 引入的脚本执行层，将 Rhai 嵌入式脚本引擎接入 KoRkuma 管道，提供两个能力：
 
 1. **`RunScriptAction`**：允许宏的动作列表中直接内嵌一段 Rhai 代码，可读取事件数据、读写状态变量、调用宿主函数白名单。
 2. **`ExpressionConstraint`**：允许约束树的叶节点使用任意 Rhai 布尔表达式（替代固定的 `VarCompare`/`TimeRange` 类型），表达更复杂的条件逻辑。

@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use koakuma_core::domain::{TargetSelector, UiOp};
+use korkuma_core::domain::{TargetSelector, UiOp};
 use windows::Win32::Foundation::{HWND, LPARAM, WPARAM};
 use windows::Win32::UI::WindowsAndMessaging::{
     PostMessageW, WM_LBUTTONDOWN, WM_LBUTTONUP,

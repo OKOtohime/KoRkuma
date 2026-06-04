@@ -1,6 +1,6 @@
 # `engine_loop` — 引擎线程与双通道事件循环
 
-> **Crate**: `koakuma-core` · **文件**: `crates/core/src/engine_loop.rs`
+> **Crate**: `korkuma-core` · **文件**: `crates/core/src/engine_loop.rs`
 > **最后同步**: 2026-06-03 (M2.1：引入 Tokio 运行时)
 
 ## 职责

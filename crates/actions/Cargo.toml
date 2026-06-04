@@ -1,10 +1,10 @@
 [package]
-name = "koakuma-actions"
+name = "korkuma-actions"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-koakuma-core = { workspace = true }
+korkuma-core = { workspace = true }
 notify-rust   = "4.17.0"
 async-trait   = { workspace = true }
 

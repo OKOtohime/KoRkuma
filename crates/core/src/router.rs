@@ -30,7 +30,7 @@ impl EventRouter {
     /// # Examples
     ///
     /// ```rust
-    /// use koakuma_core::router::EventRouter;
+    /// use korkuma_core::router::EventRouter;
     ///
     /// let router = EventRouter::new();
     /// ```
@@ -48,9 +48,9 @@ impl EventRouter {
     /// # Examples
     ///
     /// ```rust
-    /// use koakuma_core::router::EventRouter;
-    /// use koakuma_core::domain::{Macro, ConstraintExpr, TriggerConfig};
-    /// use koakuma_core::permission::PermissionSet;
+    /// use korkuma_core::router::EventRouter;
+    /// use korkuma_core::domain::{Macro, ConstraintExpr, TriggerConfig};
+    /// use korkuma_core::permission::PermissionSet;
     ///
     /// let mut router = EventRouter::new();
     /// let m = Macro {
@@ -83,7 +83,7 @@ impl EventRouter {
     /// # Examples
     ///
     /// ```rust
-    /// use koakuma_core::router::EventRouter;
+    /// use korkuma_core::router::EventRouter;
     ///
     /// let mut router = EventRouter::new();
     /// let unknown_id = uuid::Uuid::nil();
@@ -106,9 +106,9 @@ impl EventRouter {
     /// # Examples
     ///
     /// ```rust
-    /// use koakuma_core::router::EventRouter;
-    /// use koakuma_core::domain::{Macro, ConstraintExpr, TriggerConfig};
-    /// use koakuma_core::permission::PermissionSet;
+    /// use korkuma_core::router::EventRouter;
+    /// use korkuma_core::domain::{Macro, ConstraintExpr, TriggerConfig};
+    /// use korkuma_core::permission::PermissionSet;
     ///
     /// let mut router = EventRouter::new();
     /// let id = uuid::Uuid::new_v4();
@@ -281,11 +281,11 @@ impl EventRouter {
     /// # Examples
     ///
     /// ```rust
-    /// use koakuma_core::router::EventRouter;
+    /// use korkuma_core::router::EventRouter;
     ///
     /// # use std::sync::Arc;
-    /// # use koakuma_core::registry::Registry;
-    /// # use koakuma_store::InMemoryStateStore;
+    /// # use korkuma_core::registry::Registry;
+    /// # use korkuma_store::InMemoryStateStore;
     /// # let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
     /// # rt.block_on(async {
     /// let router = EventRouter::new();
@@ -331,11 +331,11 @@ impl EventRouter {
     /// # Examples
     ///
     /// ```rust
-    /// use koakuma_core::router::EventRouter;
+    /// use korkuma_core::router::EventRouter;
     ///
     /// # use std::sync::Arc;
-    /// # use koakuma_core::registry::Registry;
-    /// # use koakuma_store::InMemoryStateStore;
+    /// # use korkuma_core::registry::Registry;
+    /// # use korkuma_store::InMemoryStateStore;
     /// # let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
     /// # rt.block_on(async {
     /// let router = EventRouter::new();
@@ -376,7 +376,7 @@ impl EventRouter {
     /// # Examples
     ///
     /// ```rust
-    /// use koakuma_core::router::EventRouter;
+    /// use korkuma_core::router::EventRouter;
     ///
     /// let router = EventRouter::new();
     /// let snap = router.snapshot();

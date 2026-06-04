@@ -1,20 +1,20 @@
 [package]
-name = "koakuma-app"
+name = "korkuma-app"
 version = "0.1.0"
 edition = "2024"
 build = "build.rs"
 
 [[bin]]
-name = "koakuma"
+name = "korkuma"
 path = "src/main.rs"
 
 [dependencies]
-koakuma-core        = { workspace = true }
-koakuma-hooks       = { workspace = true }
-koakuma-actions     = { workspace = true }
-koakuma-constraints = { workspace = true }
-koakuma-script      = { workspace = true }
-koakuma-store       = { workspace = true }
+korkuma-core        = { workspace = true }
+korkuma-hooks       = { workspace = true }
+korkuma-actions     = { workspace = true }
+korkuma-constraints = { workspace = true }
+korkuma-script      = { workspace = true }
+korkuma-store       = { workspace = true }
 slint               = { workspace = true, features = ["renderer-femtovg", "renderer-software"] }
 serde_json          = { workspace = true }
 uuid                = { workspace = true }

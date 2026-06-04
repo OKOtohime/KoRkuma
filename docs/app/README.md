@@ -1,11 +1,11 @@
-# `koakuma-app` — Slint GUI 入口
+# `korkuma-app` — Slint GUI 入口
 
-> **Cargo 包名**: `koakuma-app` · **路径**: `crates/app/`
+> **Cargo 包名**: `korkuma-app` · **路径**: `crates/app/`
 > **最后同步**: 2026-06-04 (M2.4：新增 `tree_model` 模块)
 
 ## 职责概述
 
-`koakuma-app` 是可执行文件 `koakuma` 的入口（M1.4），负责：渲染后端探测、构建 `Registry`（注册所有内置 + 平台 provider + Rhai 脚本）、启动引擎线程、桥接 UI 回调与 `EngineCommand`，以及 `macros.json` 热重载。
+`korkuma-app` 是可执行文件 `korkuma` 的入口（M1.4），负责：渲染后端探测、构建 `Registry`（注册所有内置 + 平台 provider + Rhai 脚本）、启动引擎线程、桥接 UI 回调与 `EngineCommand`，以及 `macros.json` 热重载。
 
 ## 模块索引
 
@@ -19,11 +19,11 @@
 
 | Crate | 用途 |
 |-------|------|
-| `koakuma-core` | 引擎类型、`Registry`、`EngineCommand`/`EngineEvent`、`permission` |
-| `koakuma-hooks` | 平台 `HookProvider` 注册 |
-| `koakuma-actions` | 内置 Action 注册 |
-| `koakuma-script` | Rhai ScriptAction / ScriptConstraint 注册 |
-| `koakuma-store` | `InMemoryStateStore`、`load_macros`、`save_macros` |
+| `korkuma-core` | 引擎类型、`Registry`、`EngineCommand`/`EngineEvent`、`permission` |
+| `korkuma-hooks` | 平台 `HookProvider` 注册 |
+| `korkuma-actions` | 内置 Action 注册 |
+| `korkuma-script` | Rhai ScriptAction / ScriptConstraint 注册 |
+| `korkuma-store` | `InMemoryStateStore`、`load_macros`、`save_macros` |
 | `slint` | UI 框架，`ui.slint` 编译为 Rust 绑定（femtovg + software features） |
 | `notify` | 文件系统事件监听（macros.json 热重载） |
 | `crossbeam-channel` | engine sender 跨线程传递 |

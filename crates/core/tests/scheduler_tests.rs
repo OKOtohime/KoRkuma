@@ -11,7 +11,7 @@ use std::sync::{
 use std::time::{Duration, SystemTime};
 
 use async_trait::async_trait;
-use koakuma_core::{
+use korkuma_core::{
     context::{CancellationToken, ExecContext, LogHandle, ResourcePool},
     domain::{ActionConfig, ConcurrencyPolicy, WorkflowNode},
     error::ActionError,
@@ -23,7 +23,7 @@ use koakuma_core::{
     traits::{Action, Outcome},
     value::Value,
 };
-use koakuma_store::InMemoryStateStore;
+use korkuma_store::InMemoryStateStore;
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
@@ -54,7 +54,7 @@ fn make_ctx(store: &Arc<dyn StateStore>, pool: ResourcePool) -> ExecContext {
     }
 }
 
-fn new_scheduler() -> (WorkflowScheduler, crossbeam_channel::Receiver<koakuma_core::engine::EngineEvent>) {
+fn new_scheduler() -> (WorkflowScheduler, crossbeam_channel::Receiver<korkuma_core::engine::EngineEvent>) {
     let (tx, rx) = crossbeam_channel::unbounded();
     let sched = WorkflowScheduler::new(tokio::runtime::Handle::current(), tx);
     (sched, rx)
@@ -485,7 +485,7 @@ async fn resource_lock_prevents_concurrent_input_access() {
 
 #[tokio::test]
 async fn dispatch_scheduled_fires_higher_priority_macro_first() {
-    use koakuma_core::{
+    use korkuma_core::{
         domain::{ConstraintExpr, Macro, TriggerConfig},
         permission::PermissionSet,
         registry::Registry,

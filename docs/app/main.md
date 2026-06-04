@@ -1,6 +1,6 @@
 # `main` — 程序入口与组件组装
 
-> **Crate**: `koakuma-app` · **文件**: `crates/app/src/main.rs`
+> **Crate**: `korkuma-app` · **文件**: `crates/app/src/main.rs`
 > **最后同步**: 2026-06-02
 
 ## 职责
@@ -28,9 +28,9 @@
 main()
   ├─ select_backend()              ← 设置 SLINT_BACKEND 环境变量
   ├─ Registry::with_builtins()
-  │   + register_trigger_specs(&mut registry)   // koakuma_hooks
-  │   + register_actions(&mut registry)         // koakuma_actions
-  │   + register_script_actions(&mut registry)  // koakuma_script
+  │   + register_trigger_specs(&mut registry)   // korkuma_hooks
+  │   + register_actions(&mut registry)         // korkuma_actions
+  │   + register_script_actions(&mut registry)  // korkuma_script
   │   + register_script_constraints(&mut registry)
   ├─ Arc<InMemoryStateStore::new()>
   ├─ MainWindow::new()
@@ -55,7 +55,7 @@ main()
 | `platform_has_hw_gl() -> bool` | Linux：DRI 节点 + 显示服务器；Windows：乐观 `true`；其他：`true` |
 | `spawn_file_watcher(...)` | 启动 `notify` 监听线程，对 `macros.json` 的外部写入做增量 engine diff |
 | `reload_ui_model(ui, macros)` | 主线程：清空并重建 `VecModel<MacroItem>`，同步 editor 选中行 |
-| `persist(macros, suppress_reload)` | 原子写 `macros.json`（`koakuma_store::save_macros`），写前设置 `suppress_reload` flag 避免 watcher 触发冗余刷新 |
+| `persist(macros, suppress_reload)` | 原子写 `macros.json`（`korkuma_store::save_macros`），写前设置 `suppress_reload` flag 避免 watcher 触发冗余刷新 |
 | `refresh_editor(ui, macros, idx)` | 将 `macros[idx]` 的 triggers/constraints/actions 序列化为 JSON 填入 3-tab 编辑器 |
 | `format_engine_event(ev)` | 将 `EngineEvent` 格式化为短日志行（`[FIRED]`、`[ERR]`、`[VAR]` 等前缀） |
 | `create_default_macro()` | 创建带 Manual 触发器 + Notify action 的默认宏，`aggregate_from_configs` 自动填充权限 |
@@ -94,7 +94,7 @@ EngineEvent 通过闭包捕获 `ui_weak`，在 `upgrade_in_event_loop` 中插入
     "category": null,
     "triggers": [{"type": "Hotkey", "keys": [{"modifiers": ["Ctrl"], "key": "F1"}]}],
     "constraints": {"op": "Always"},
-    "actions": [{"type": "Notify", "title": "Koakuma", "body": "热键触发！"}],
+    "actions": [{"type": "Notify", "title": "KoRkuma", "body": "热键触发！"}],
     "granted_permissions": []
   }
 ]
@@ -104,16 +104,16 @@ EngineEvent 通过闭包捕获 `ui_weak`，在 `upgrade_in_event_loop` 中插入
 
 依赖以下同 workspace 模块：
 
-- [`koakuma_core::engine_loop`](../core/engine_loop.md) — `start_engine`、`EngineHandle`
-- [`koakuma_core::engine`](../core/engine.md) — `EngineCommand`、`EngineEvent`、`LogLevel`
-- [`koakuma_core::domain`](../core/domain.md) — `Macro`、`TriggerConfig`、`ActionConfig`、`ConstraintExpr`
-- [`koakuma_core::permission`](../core/permission.md) — `aggregate_from_configs`
-- [`koakuma_core::registry`](../core/registry.md) — `Registry::with_builtins`
-- [`koakuma_core::state`](../core/state.md) — `StateStore` trait
-- [`koakuma_store`](../store/README.md) — `InMemoryStateStore`、`load_macros`、`save_macros`
-- [`koakuma_hooks`](../hooks/README.md) — `register_trigger_specs`（+ Windows: `HotkeyProvider`、`WindowFocusProvider`、`ProcessProvider`）
-- [`koakuma_actions`](../actions/README.md) — `register_all`
-- [`koakuma_script`](../script/README.md) — `register_actions`、`register_constraints`
+- [`korkuma_core::engine_loop`](../core/engine_loop.md) — `start_engine`、`EngineHandle`
+- [`korkuma_core::engine`](../core/engine.md) — `EngineCommand`、`EngineEvent`、`LogLevel`
+- [`korkuma_core::domain`](../core/domain.md) — `Macro`、`TriggerConfig`、`ActionConfig`、`ConstraintExpr`
+- [`korkuma_core::permission`](../core/permission.md) — `aggregate_from_configs`
+- [`korkuma_core::registry`](../core/registry.md) — `Registry::with_builtins`
+- [`korkuma_core::state`](../core/state.md) — `StateStore` trait
+- [`korkuma_store`](../store/README.md) — `InMemoryStateStore`、`load_macros`、`save_macros`
+- [`korkuma_hooks`](../hooks/README.md) — `register_trigger_specs`（+ Windows: `HotkeyProvider`、`WindowFocusProvider`、`ProcessProvider`）
+- [`korkuma_actions`](../actions/README.md) — `register_all`
+- [`korkuma_script`](../script/README.md) — `register_actions`、`register_constraints`
 - `slint::include_modules!()` — 引入 `MainWindow`、`MacroItem`、`LogEntry`
 - `notify` — 文件系统事件监听（热重载）
 - `crossbeam_channel` — engine sender 跨线程传递

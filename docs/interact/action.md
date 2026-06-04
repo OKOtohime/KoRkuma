@@ -1,6 +1,6 @@
 # `action` — InteractAction 与工厂注册
 
-> **Crate**: `koakuma-interact` · **文件**: `crates/interact/src/action.rs`
+> **Crate**: `korkuma-interact` · **文件**: `crates/interact/src/action.rs`
 > **最后同步**: 2026-06-04 (M2.3 初始实现)
 
 ## 职责
@@ -39,12 +39,12 @@
 
 - [`negotiator`](negotiator.md) — `BackendRegistry`
 - [`error`](error.md) — `DispatchError`
-- [`koakuma_core::domain`](../core/domain.md) — `ActionConfig::Interact`、`TargetSelector`、`UiOp`、`OnNoBackground`
-- [`koakuma_core::permission`](../core/permission.md) — `Permission`、`PermissionSet`
-- [`koakuma_core::traits`](../core/traits.md) — `Action`、`Outcome`
+- [`korkuma_core::domain`](../core/domain.md) — `ActionConfig::Interact`、`TargetSelector`、`UiOp`、`OnNoBackground`
+- [`korkuma_core::permission`](../core/permission.md) — `Permission`、`PermissionSet`
+- [`korkuma_core::traits`](../core/traits.md) — `Action`、`Outcome`
 
 ## 设计说明
 
-`register_actions` 通过闭包捕获 `Arc<BackendRegistry>`，与 `koakuma-script::register_actions` 的模式一致。每个 `InteractAction` 实例克隆 `Arc`（廉价引用计数），所有实例共享同一 `BackendRegistry`。
+`register_actions` 通过闭包捕获 `Arc<BackendRegistry>`，与 `korkuma-script::register_actions` 的模式一致。每个 `InteractAction` 实例克隆 `Arc`（廉价引用计数），所有实例共享同一 `BackendRegistry`。
 
 权限门控由两层保证：`required_permissions()` 声明让引擎在执行前进行静态检查；`BackendRegistry::dispatch` 在 `Degrade` 路径上再次检查 `ForegroundTakeover`，防止权限绕过。

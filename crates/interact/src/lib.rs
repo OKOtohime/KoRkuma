@@ -1,4 +1,4 @@
-//! Background interaction and target abstraction for Koakuma (M2.3).
+//! Background interaction and target abstraction for KoRkuma (M2.3).
 //!
 //! Provides [`InteractionBackend`] implementations for:
 //! - **Windows UIA** — UI Automation (background, no focus steal)
@@ -8,15 +8,15 @@
 //!
 //! The [`BackendRegistry`] performs capability negotiation: it picks the highest
 //! [`Tier`] backend available for a [`TargetSelector`] and applies the
-//! [`OnNoBackground`](koakuma_core::domain::OnNoBackground) fallback policy when
+//! [`OnNoBackground`](korkuma_core::domain::OnNoBackground) fallback policy when
 //! no `Background`-tier backend is found.
 //!
 //! # Example
 //!
 //! ```rust,no_run
 //! use std::sync::Arc;
-//! use koakuma_interact::{BackendRegistry, backends::StubBackend, backend::Tier};
-//! use koakuma_interact::backends::cdp::CdpBackend;
+//! use korkuma_interact::{BackendRegistry, backends::StubBackend, backend::Tier};
+//! use korkuma_interact::backends::cdp::CdpBackend;
 //!
 //! let mut reg = BackendRegistry::new();
 //! reg.register(StubBackend::new(Tier::Background));

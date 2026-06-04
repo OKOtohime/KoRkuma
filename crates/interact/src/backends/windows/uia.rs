@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use koakuma_core::domain::{TargetSelector, UiOp};
+use korkuma_core::domain::{TargetSelector, UiOp};
 use windows::Win32::Foundation::{BOOL, HWND, LPARAM};
 use windows::Win32::System::Com::{
     CoCreateInstance, CoInitializeEx, CLSCTX_INPROC_SERVER, COINIT_APARTMENTTHREADED,

@@ -1,4 +1,4 @@
-/// M1.4 integration tests for `koakuma-script`.
+/// M1.4 integration tests for `korkuma-script`.
 ///
 /// Covers `RunScriptAction` (permission gate, get_var/set_var/log, sandbox) and
 /// `ExpressionConstraint` (bool evaluation, get_var, resource limits).
@@ -6,7 +6,7 @@
 use std::sync::Arc;
 use std::time::SystemTime;
 
-use koakuma_core::{
+use korkuma_core::{
     context::{CancellationToken, EvalContext, ExecContext, LogHandle},
     domain::{ActionConfig, ConstraintConfig, ScriptLang},
     error::{ActionError, ConstraintError},
@@ -16,8 +16,8 @@ use koakuma_core::{
     traits::{Action, Constraint, Outcome},
     value::Value,
 };
-use koakuma_script::{build_expression, build_run_script};
-use koakuma_store::InMemoryStateStore;
+use korkuma_script::{build_expression, build_run_script};
+use korkuma_store::InMemoryStateStore;
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 

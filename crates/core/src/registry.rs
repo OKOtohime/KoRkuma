@@ -27,7 +27,7 @@ impl Registry {
     /// # Examples
     ///
     /// ```rust
-    /// use koakuma_core::registry::Registry;
+    /// use korkuma_core::registry::Registry;
     ///
     /// let reg = Registry::new();
     /// // No factories yet; build_* calls will return RegistryError::UnknownProvider.
@@ -61,7 +61,7 @@ impl Registry {
     /// # Examples
     ///
     /// ```rust
-    /// use koakuma_core::registry::Registry;
+    /// use korkuma_core::registry::Registry;
     ///
     /// let mut reg = Registry::new();
     /// reg.register_trigger(|_c| None); // a no-op factory
@@ -78,7 +78,7 @@ impl Registry {
     /// # Examples
     ///
     /// ```rust
-    /// use koakuma_core::registry::Registry;
+    /// use korkuma_core::registry::Registry;
     ///
     /// let mut reg = Registry::new();
     /// reg.register_constraint(|_c| None);
@@ -95,7 +95,7 @@ impl Registry {
     /// # Examples
     ///
     /// ```rust
-    /// use koakuma_core::registry::Registry;
+    /// use korkuma_core::registry::Registry;
     ///
     /// let mut reg = Registry::new();
     /// reg.register_action(|_c| None);
@@ -118,8 +118,8 @@ impl Registry {
     /// # Examples
     ///
     /// ```rust
-    /// use koakuma_core::registry::Registry;
-    /// use koakuma_core::domain::TriggerConfig;
+    /// use korkuma_core::registry::Registry;
+    /// use korkuma_core::domain::TriggerConfig;
     ///
     /// let reg = Registry::with_builtins();
     /// let spec = reg.build_trigger(&TriggerConfig::Manual);
@@ -141,8 +141,8 @@ impl Registry {
     /// # Examples
     ///
     /// ```rust
-    /// use koakuma_core::registry::Registry;
-    /// use koakuma_core::domain::ConstraintConfig;
+    /// use korkuma_core::registry::Registry;
+    /// use korkuma_core::domain::ConstraintConfig;
     ///
     /// let reg = Registry::with_builtins();
     /// let c = ConstraintConfig::TimeRange { from: "09:00".to_string(), to: "17:00".to_string() };
@@ -167,8 +167,8 @@ impl Registry {
     /// # Examples
     ///
     /// ```rust
-    /// use koakuma_core::registry::Registry;
-    /// use koakuma_core::domain::ActionConfig;
+    /// use korkuma_core::registry::Registry;
+    /// use korkuma_core::domain::ActionConfig;
     ///
     /// let reg = Registry::with_builtins();
     /// let action = reg.build_action(&ActionConfig::Delay { millis: 0 });

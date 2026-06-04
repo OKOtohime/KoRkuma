@@ -1,4 +1,4 @@
-# `koakuma-interact` — 后台交互与目标抽象
+# `korkuma-interact` — 后台交互与目标抽象
 
 > **路径**: `crates/interact` · **最后同步**: 2026-06-04 (M2.3 初始实现)
 

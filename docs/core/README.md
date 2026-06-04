@@ -1,11 +1,11 @@
-# `koakuma-core` — 核心引擎与领域模型
+# `korkuma-core` — 核心引擎与领域模型
 
-> **Cargo 包名**: `koakuma-core` · **路径**: `crates/core/`
+> **Cargo 包名**: `korkuma-core` · **路径**: `crates/core/`
 > **最后同步**: 2026-06-04 (M2.4：新增 `schema` 模块)
 
 ## 职责概述
 
-`koakuma-core` 是整个平台的基础层，定义所有跨平台共享的领域类型、trait 契约、事件路由、约束求值和引擎命令协议。其他 crate（actions、hooks、store、constraints、app）均依赖此 crate，但此 crate 不依赖它们，保持单向依赖图。
+`korkuma-core` 是整个平台的基础层，定义所有跨平台共享的领域类型、trait 契约、事件路由、约束求值和引擎命令协议。其他 crate（actions、hooks、store、constraints、app）均依赖此 crate，但此 crate 不依赖它们，保持单向依赖图。
 
 ## 模块索引
 

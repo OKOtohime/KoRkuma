@@ -1,15 +1,15 @@
 [package]
-name = "koakuma-script"
+name = "korkuma-script"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-koakuma-core = { workspace = true }
+korkuma-core = { workspace = true }
 serde_json   = { workspace = true }
 rhai         = { workspace = true }
 async-trait  = { workspace = true }
 
 [dev-dependencies]
-koakuma-store = { workspace = true }
+korkuma-store = { workspace = true }
 uuid          = { workspace = true }
 tokio         = { workspace = true }

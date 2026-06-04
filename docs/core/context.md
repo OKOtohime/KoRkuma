@@ -1,6 +1,6 @@
 # `context` — 运行时执行上下文
 
-> **Crate**: `koakuma-core` · **文件**: `crates/core/src/context.rs`
+> **Crate**: `korkuma-core` · **文件**: `crates/core/src/context.rs`
 > **最后同步**: 2026-06-04 (M2.4：`ExecContext` 新增 `dry_run: bool` 字段)
 
 ## 职责

@@ -9,11 +9,11 @@
 //!   flat position.  Positions are stable for a given tree snapshot (same ordering as
 //!   the flatten walk).
 
-use koakuma_core::domain::{
+use korkuma_core::domain::{
     ActionConfig, CompareOp, ConstraintConfig, ConstraintExpr, InputEvent, OnNoBackground,
     ScriptLang, TargetSelector, UiOp, VarScope, WaitCondition, WorkflowNode,
 };
-use koakuma_core::value::Value;
+use korkuma_core::value::Value;
 
 // ── Constraint model ─────────────────────────────────────────────────────────
 
@@ -573,7 +573,7 @@ pub fn add_workflow_action(root: WorkflowNode, cfg: ActionConfig) -> WorkflowNod
 /// Append an `If` node (with `Always` condition and empty `Seq` body) to the root.
 pub fn add_workflow_if(root: WorkflowNode) -> WorkflowNode {
     let if_node = WorkflowNode::If {
-        cond: koakuma_core::domain::ConstraintExpr::Always,
+        cond: korkuma_core::domain::ConstraintExpr::Always,
         then: Box::new(WorkflowNode::Seq(vec![])),
         otherwise: None,
     };

@@ -1,6 +1,6 @@
 # `schema` — ParamSchema：schema 驱动表单描述符
 
-> **Crate**: `koakuma-core` · **文件**: `crates/core/src/schema.rs`
+> **Crate**: `korkuma-core` · **文件**: `crates/core/src/schema.rs`
 > **最后同步**: 2026-06-04 (M2.4：新增模块)
 
 ## 职责

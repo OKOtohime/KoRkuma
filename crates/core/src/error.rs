@@ -5,7 +5,7 @@ use thiserror::Error;
 /// # Examples
 ///
 /// ```rust
-/// use koakuma_core::error::HookError;
+/// use korkuma_core::error::HookError;
 ///
 /// let err = HookError::InitFailed("device not found".to_string());
 /// assert!(err.to_string().contains("device not found"));
@@ -26,7 +26,7 @@ pub enum HookError {
 /// # Examples
 ///
 /// ```rust
-/// use koakuma_core::error::RegistryError;
+/// use korkuma_core::error::RegistryError;
 ///
 /// let err = RegistryError::UnknownProvider("my_custom".to_string());
 /// assert!(err.to_string().contains("my_custom"));
@@ -45,7 +45,7 @@ pub enum RegistryError {
 /// # Examples
 ///
 /// ```rust
-/// use koakuma_core::error::{ConstraintError, RegistryError};
+/// use korkuma_core::error::{ConstraintError, RegistryError};
 ///
 /// let reg_err = RegistryError::UnknownProvider("x".to_string());
 /// let c_err = ConstraintError::from(reg_err);
@@ -67,7 +67,7 @@ pub enum ConstraintError {
 /// # Examples
 ///
 /// ```rust
-/// use koakuma_core::error::ActionError;
+/// use korkuma_core::error::ActionError;
 ///
 /// let err = ActionError::Failed("process exited with code 1".to_string());
 /// assert!(err.to_string().contains("action failed"));

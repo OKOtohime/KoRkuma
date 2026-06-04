@@ -32,7 +32,7 @@ pub enum ParamType {
 /// # Examples
 ///
 /// ```rust
-/// use koakuma_core::schema::{ParamField, ParamType};
+/// use korkuma_core::schema::{ParamField, ParamType};
 ///
 /// let f = ParamField::required("title", "Title", ParamType::Str);
 /// assert_eq!(f.name, "title");
@@ -71,7 +71,7 @@ impl ParamField {
 /// # Examples
 ///
 /// ```rust
-/// use koakuma_core::schema::{ParamSchema, ParamField, ParamType};
+/// use korkuma_core::schema::{ParamSchema, ParamField, ParamType};
 ///
 /// let schema = ParamSchema::new(
 ///     "Notify",

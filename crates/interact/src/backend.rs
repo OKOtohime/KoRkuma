@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use koakuma_core::domain::{TargetSelector, UiOp, UiPath};
+use korkuma_core::domain::{TargetSelector, UiOp, UiPath};
 use crate::error::BackendError;
 
 /// Capability tier of an [`InteractionBackend`] for a specific resolved target.
@@ -10,7 +10,7 @@ use crate::error::BackendError;
 /// # Examples
 ///
 /// ```rust
-/// use koakuma_interact::backend::Tier;
+/// use korkuma_interact::backend::Tier;
 ///
 /// assert!(Tier::Background > Tier::ForegroundSynthetic);
 /// assert!(Tier::ForegroundSynthetic > Tier::Unsupported);

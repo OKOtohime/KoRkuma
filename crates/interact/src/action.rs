@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use koakuma_core::context::ExecContext;
-use koakuma_core::domain::{ActionConfig, OnNoBackground, TargetSelector, UiOp};
-use koakuma_core::error::ActionError;
-use koakuma_core::permission::{Permission, PermissionSet};
-use koakuma_core::registry::Registry;
-use koakuma_core::traits::{Action, Outcome};
+use korkuma_core::context::ExecContext;
+use korkuma_core::domain::{ActionConfig, OnNoBackground, TargetSelector, UiOp};
+use korkuma_core::error::ActionError;
+use korkuma_core::permission::{Permission, PermissionSet};
+use korkuma_core::registry::Registry;
+use korkuma_core::traits::{Action, Outcome};
 
 use crate::error::DispatchError;
 use crate::negotiator::BackendRegistry;

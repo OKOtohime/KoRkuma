@@ -47,7 +47,7 @@ use crate::value::Value;
 /// # Examples
 ///
 /// ```rust
-/// use koakuma_core::workflow::Flow;
+/// use korkuma_core::workflow::Flow;
 ///
 /// assert!(matches!(Flow::Continue, Flow::Continue));
 /// ```
@@ -72,15 +72,15 @@ pub enum Flow {
 ///
 /// ```rust
 /// # use std::sync::Arc;
-/// # use koakuma_core::context::{ExecContext, CancellationToken, LogHandle, ResourcePool};
-/// # use koakuma_core::domain::{WorkflowNode, ActionConfig, VarScope};
-/// # use koakuma_core::event::{Event, EventKind};
-/// # use koakuma_core::permission::PermissionGrant;
-/// # use koakuma_core::registry::Registry;
-/// # use koakuma_core::state::StateStore;
-/// # use koakuma_core::value::Value;
-/// # use koakuma_core::workflow::run_workflow;
-/// # use koakuma_store::InMemoryStateStore;
+/// # use korkuma_core::context::{ExecContext, CancellationToken, LogHandle, ResourcePool};
+/// # use korkuma_core::domain::{WorkflowNode, ActionConfig, VarScope};
+/// # use korkuma_core::event::{Event, EventKind};
+/// # use korkuma_core::permission::PermissionGrant;
+/// # use korkuma_core::registry::Registry;
+/// # use korkuma_core::state::StateStore;
+/// # use korkuma_core::value::Value;
+/// # use korkuma_core::workflow::run_workflow;
+/// # use korkuma_store::InMemoryStateStore;
 /// # use std::time::SystemTime;
 /// # let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
 /// # rt.block_on(async {

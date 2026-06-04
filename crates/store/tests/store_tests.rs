@@ -1,16 +1,16 @@
 use std::path::PathBuf;
 
-use koakuma_core::domain::{ActionConfig, ConstraintExpr, Macro, MacroId, TriggerConfig};
-use koakuma_core::permission::PermissionSet;
-use koakuma_core::state::StateStore;
-use koakuma_core::value::Value;
-use koakuma_store::{InMemoryStateStore, StoreError, load_macros, save_macros};
+use korkuma_core::domain::{ActionConfig, ConstraintExpr, Macro, MacroId, TriggerConfig};
+use korkuma_core::permission::PermissionSet;
+use korkuma_core::state::StateStore;
+use korkuma_core::value::Value;
+use korkuma_store::{InMemoryStateStore, StoreError, load_macros, save_macros};
 
 // ── Test helpers ──────────────────────────────────────────────────────────────
 
 fn tmp_path(tag: &str) -> PathBuf {
     std::env::temp_dir().join(format!(
-        "koakuma_store_test_{}_{}.json",
+        "korkuma_store_test_{}_{}.json",
         std::process::id(),
         tag
     ))

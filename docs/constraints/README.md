@@ -1,11 +1,11 @@
-# `koakuma-constraints` — 内置 Constraint 实现
+# `korkuma-constraints` — 内置 Constraint 实现
 
-> **Cargo 包名**: `koakuma-constraints` · **路径**: `crates/constraints/`
+> **Cargo 包名**: `korkuma-constraints` · **路径**: `crates/constraints/`
 > **最后同步**: 2026-06-02
 
 ## 职责概述
 
-`koakuma-constraints` 提供平台特定的 `Constraint` 实现（如 `ActiveWindowConstraint`），与 `koakuma-core::builtins` 中平台无关的约束互补。M1.1 将这些实现接入 `Registry`，M2.2 引入完整的 DSL 表达式引擎。
+`korkuma-constraints` 提供平台特定的 `Constraint` 实现（如 `ActiveWindowConstraint`），与 `korkuma-core::builtins` 中平台无关的约束互补。M1.1 将这些实现接入 `Registry`，M2.2 引入完整的 DSL 表达式引擎。
 
 ## 模块索引
 
@@ -17,7 +17,7 @@
 
 | Crate | 用途 |
 |-------|------|
-| `koakuma-core` | `Constraint` trait、`ConstraintConfig`、`EvalContext` |
+| `korkuma-core` | `Constraint` trait、`ConstraintConfig`、`EvalContext` |
 
 ## 计划实现（按里程碑）
 

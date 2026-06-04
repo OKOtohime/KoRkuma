@@ -1,11 +1,11 @@
 //! [`NotifyAction`] — shows a desktop notification.
 
 use async_trait::async_trait;
-use koakuma_core::context::ExecContext;
-use koakuma_core::domain::ActionConfig;
-use koakuma_core::error::ActionError;
-use koakuma_core::permission::PermissionSet;
-use koakuma_core::traits::{Action, Outcome};
+use korkuma_core::context::ExecContext;
+use korkuma_core::domain::ActionConfig;
+use korkuma_core::error::ActionError;
+use korkuma_core::permission::PermissionSet;
+use korkuma_core::traits::{Action, Outcome};
 
 /// Shows a desktop notification with a title and body text.
 ///

@@ -35,10 +35,10 @@ use windows::Win32::UI::WindowsAndMessaging::{
     WH_KEYBOARD_LL, WM_KEYDOWN, WM_QUIT, WM_SYSKEYDOWN,
 };
 
-use koakuma_core::error::HookError;
-use koakuma_core::event::{Event, EventKind};
-use koakuma_core::traits::{EventSink, HookProvider};
-use koakuma_core::value::Value;
+use korkuma_core::error::HookError;
+use korkuma_core::event::{Event, EventKind};
+use korkuma_core::traits::{EventSink, HookProvider};
+use korkuma_core::value::Value;
 
 // ── Keyboard hook ─────────────────────────────────────────────────────────────
 
@@ -60,7 +60,7 @@ unsafe extern "system" fn keyboard_hook_proc(
             // VK_CONTROL=0x11, VK_SHIFT=0x10, VK_MENU=0x12, VK_LWIN=0x5B, VK_RWIN=0x5C
             // Use GetAsyncKeyState (physical hardware state) instead of
             // GetKeyState (per-thread synchronous state) so modifiers are
-            // detected correctly even when Koakuma's own window has focus.
+            // detected correctly even when KoRkuma's own window has focus.
             let mut modifiers = Vec::new();
             unsafe {
                 if (GetAsyncKeyState(0x11) as u16) & 0x8000 != 0 {
@@ -152,7 +152,7 @@ impl HookProvider for HotkeyProvider {
         }
         let thread_id = Arc::clone(&self.thread_id);
         let handle = thread::Builder::new()
-            .name("koakuma-hotkey".to_string())
+            .name("korkuma-hotkey".to_string())
             .spawn(move || {
                 KB_SINK.with(|c| *c.borrow_mut() = Some(sink));
                 thread_id.store(unsafe { GetCurrentThreadId() }, Ordering::SeqCst);
@@ -296,7 +296,7 @@ impl HookProvider for WindowFocusProvider {
         }
         let thread_id = Arc::clone(&self.thread_id);
         let handle = thread::Builder::new()
-            .name("koakuma-window-focus".to_string())
+            .name("korkuma-window-focus".to_string())
             .spawn(move || {
                 WF_SINK.with(|c| *c.borrow_mut() = Some(sink));
                 thread_id.store(unsafe { GetCurrentThreadId() }, Ordering::SeqCst);
@@ -448,7 +448,7 @@ impl HookProvider for ProcessProvider {
         let running = Arc::clone(&self.running);
 
         let handle = thread::Builder::new()
-            .name("koakuma-process".to_string())
+            .name("korkuma-process".to_string())
             .spawn(move || {
                 let mut prev = snapshot_processes();
                 while running.load(Ordering::SeqCst) {

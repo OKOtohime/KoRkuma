@@ -1,7 +1,7 @@
-//! Core domain model, engine protocol, and extension traits for Koakuma.
+//! Core domain model, engine protocol, and extension traits for KoRkuma.
 //!
 //! This crate defines all cross-platform shared abstractions. Platform-specific
-//! crates (`koakuma-hooks`, `koakuma-actions`, `koakuma-constraints`) implement
+//! crates (`korkuma-hooks`, `korkuma-actions`, `korkuma-constraints`) implement
 //! the traits defined here and register their implementations through
 //! [`registry::Registry`].
 //!
@@ -14,8 +14,8 @@
 //! # Examples
 //!
 //! ```rust
-//! use koakuma_core::registry::Registry;
-//! use koakuma_core::router::EventRouter;
+//! use korkuma_core::registry::Registry;
+//! use korkuma_core::router::EventRouter;
 //!
 //! let _registry = Registry::with_builtins();
 //! let _router = EventRouter::new();

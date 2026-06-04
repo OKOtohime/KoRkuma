@@ -1,11 +1,11 @@
 # `error` — 错误类型
 
-> **Crate**: `koakuma-core` · **文件**: `crates/core/src/error.rs`
+> **Crate**: `korkuma-core` · **文件**: `crates/core/src/error.rs`
 > **最后同步**: 2026-06-02
 
 ## 职责
 
-`error` 模块集中定义 `koakuma-core` 各层的错误类型，使用 `thiserror` 派生 `std::error::Error`。各错误类型与管道的不同阶段一一对应，便于调用方精确处理。
+`error` 模块集中定义 `korkuma-core` 各层的错误类型，使用 `thiserror` 派生 `std::error::Error`。各错误类型与管道的不同阶段一一对应，便于调用方精确处理。
 
 ## 公开 API
 

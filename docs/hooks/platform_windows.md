@@ -1,6 +1,6 @@
 # `platform_windows` — Windows 平台 HookProvider 实现
 
-> **Crate**: `koakuma-hooks` · **文件**: `crates/hooks/src/platform_windows.rs`
+> **Crate**: `korkuma-hooks` · **文件**: `crates/hooks/src/platform_windows.rs`
 > **最后同步**: 2026-06-02
 > **编译条件**: `#[cfg(target_os = "windows")]`
 
@@ -79,10 +79,10 @@ impl HookProvider for ProcessProvider { ... }
 ## 依赖关系
 
 依赖以下同 workspace 模块：
-- `koakuma_core::error` — `HookError`
-- `koakuma_core::event` — `Event`、`EventKind`
-- `koakuma_core::traits` — `EventSink`、`HookProvider`
-- `koakuma_core::value` — `Value`
+- `korkuma_core::error` — `HookError`
+- `korkuma_core::event` — `Event`、`EventKind`
+- `korkuma_core::traits` — `EventSink`、`HookProvider`
+- `korkuma_core::value` — `Value`
 
 外部依赖（仅 Windows 构建）：
 - `windows::Win32::UI::WindowsAndMessaging` — hook 安装、消息循环

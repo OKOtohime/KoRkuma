@@ -9,10 +9,10 @@
 //! | `WindowFocus` | `title: Str`, `exe: Str` |
 //! | `Process` | `name: Str`, `pid: Int`, `event: Str("started"\|"stopped")` |
 
-use koakuma_core::domain::{KeyCombo, ProcessEvent, TriggerConfig};
-use koakuma_core::event::{Event, EventKind};
-use koakuma_core::traits::TriggerSpec;
-use koakuma_core::value::Value;
+use korkuma_core::domain::{KeyCombo, ProcessEvent, TriggerConfig};
+use korkuma_core::event::{Event, EventKind};
+use korkuma_core::traits::TriggerSpec;
+use korkuma_core::value::Value;
 
 // ── Hotkey ────────────────────────────────────────────────────────────────────
 
@@ -24,9 +24,9 @@ use koakuma_core::value::Value;
 /// # Examples
 ///
 /// ```rust,no_run
-/// use koakuma_hooks::trigger_spec::HotkeyTriggerSpec;
-/// use koakuma_core::domain::KeyCombo;
-/// use koakuma_core::traits::TriggerSpec;
+/// use korkuma_hooks::trigger_spec::HotkeyTriggerSpec;
+/// use korkuma_core::domain::KeyCombo;
+/// use korkuma_core::traits::TriggerSpec;
 ///
 /// let spec = HotkeyTriggerSpec::new(vec![
 ///     KeyCombo { modifiers: vec!["Ctrl".to_string()], key: "S".to_string() },
@@ -93,8 +93,8 @@ impl TriggerSpec for HotkeyTriggerSpec {
 /// # Examples
 ///
 /// ```rust,no_run
-/// use koakuma_hooks::trigger_spec::WindowFocusTriggerSpec;
-/// use koakuma_core::traits::TriggerSpec;
+/// use korkuma_hooks::trigger_spec::WindowFocusTriggerSpec;
+/// use korkuma_core::traits::TriggerSpec;
 ///
 /// let spec = WindowFocusTriggerSpec::new("Visual Studio Code".to_string(), false);
 /// ```
@@ -147,9 +147,9 @@ impl TriggerSpec for WindowFocusTriggerSpec {
 /// # Examples
 ///
 /// ```rust,no_run
-/// use koakuma_hooks::trigger_spec::ProcessTriggerSpec;
-/// use koakuma_core::domain::ProcessEvent;
-/// use koakuma_core::traits::TriggerSpec;
+/// use korkuma_hooks::trigger_spec::ProcessTriggerSpec;
+/// use korkuma_core::domain::ProcessEvent;
+/// use korkuma_core::traits::TriggerSpec;
 ///
 /// let spec = ProcessTriggerSpec::new("notepad".to_string(), ProcessEvent::Started);
 /// ```

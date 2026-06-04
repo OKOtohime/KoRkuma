@@ -1,6 +1,6 @@
 # `domain` — 核心领域数据结构
 
-> **Crate**: `koakuma-core` · **文件**: `crates/core/src/domain.rs`
+> **Crate**: `korkuma-core` · **文件**: `crates/core/src/domain.rs`
 > **最后同步**: 2026-06-04 (M2.3：新增 `TargetSelector`、`OnNoBackground`、`UiPath`、`UiOp`、`ActionConfig::Interact`)
 
 ## 职责
@@ -71,7 +71,7 @@
 | `SetVariable { scope, key, value }` | 写入状态变量 |
 | `Delay { millis }` | 等待指定毫秒 |
 | `RunScript { lang, source }` | 执行脚本（Rhai） |
-| `Interact { target, op, on_no_background }` | **M2.3** 后台 UI 自动化操作（见 `koakuma-interact`） |
+| `Interact { target, op, on_no_background }` | **M2.3** 后台 UI 自动化操作（见 `korkuma-interact`） |
 | `Custom { provider, params }` | 第三方 provider 扩展点 |
 
 #### `ConstraintExpr` — 布尔表达式树

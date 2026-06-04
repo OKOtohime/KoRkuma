@@ -1,6 +1,6 @@
 # `negotiator` — 能力协商与降级策略
 
-> **Crate**: `koakuma-interact` · **文件**: `crates/interact/src/negotiator.rs`
+> **Crate**: `korkuma-interact` · **文件**: `crates/interact/src/negotiator.rs`
 > **最后同步**: 2026-06-04 (M2.3 初始实现)
 
 ## 职责
@@ -48,8 +48,8 @@ collect_candidates(sel)
 
 - [`backend`](backend.md) — `InteractionBackend`、`ResolvedTarget`、`Tier`、`UiNode`
 - [`error`](error.md) — `DispatchError`
-- [`koakuma_core::domain`](../core/domain.md) — `OnNoBackground`、`TargetSelector`、`UiOp`
-- [`koakuma_core::permission`](../core/permission.md) — `Permission::ForegroundTakeover`、`PermissionGrant`
+- [`korkuma_core::domain`](../core/domain.md) — `OnNoBackground`、`TargetSelector`、`UiOp`
+- [`korkuma_core::permission`](../core/permission.md) — `Permission::ForegroundTakeover`、`PermissionGrant`
 
 ## 设计说明
 

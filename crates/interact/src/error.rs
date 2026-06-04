@@ -9,7 +9,7 @@ use thiserror::Error;
 /// # Examples
 ///
 /// ```rust
-/// use koakuma_interact::BackendError;
+/// use korkuma_interact::BackendError;
 ///
 /// let e = BackendError::NotFound("Notepad".into());
 /// assert!(e.to_string().contains("not found"));
@@ -38,7 +38,7 @@ pub enum BackendError {
 /// # Examples
 ///
 /// ```rust
-/// use koakuma_interact::DispatchError;
+/// use korkuma_interact::DispatchError;
 ///
 /// let e = DispatchError::NoBackend;
 /// assert!(e.to_string().contains("no background"));

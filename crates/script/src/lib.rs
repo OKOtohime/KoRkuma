@@ -1,4 +1,4 @@
-//! Rhai scripting integration for Koakuma.
+//! Rhai scripting integration for KoRkuma.
 //!
 //! Provides two runtime implementations:
 //!
@@ -27,8 +27,8 @@
 //! # Usage
 //!
 //! ```rust,no_run
-//! use koakuma_core::registry::Registry;
-//! use koakuma_script::{register_actions, register_constraints};
+//! use korkuma_core::registry::Registry;
+//! use korkuma_script::{register_actions, register_constraints};
 //!
 //! let mut registry = Registry::with_builtins();
 //! register_actions(&mut registry);
@@ -40,7 +40,7 @@ use std::sync::{Arc, Mutex};
 use async_trait::async_trait;
 use rhai::{Dynamic, Engine, Map as RhaiMap, Scope};
 
-use koakuma_core::{
+use korkuma_core::{
     context::{EvalContext, ExecContext},
     domain::{ActionConfig, ConstraintConfig},
     error::{ActionError, ConstraintError},
@@ -149,7 +149,7 @@ impl Action for RunScriptAction {
         });
 
         // get_var — snapshot-based read of global store + local vars
-        let store_for_read: Arc<dyn koakuma_core::state::StateStore> = Arc::clone(&ctx.store);
+        let store_for_read: Arc<dyn korkuma_core::state::StateStore> = Arc::clone(&ctx.store);
         let locals_snap = ctx.locals.clone();
         engine.register_fn("get_var", move |key: &str| -> Dynamic {
             if let Some(v) = locals_snap.get(key) {

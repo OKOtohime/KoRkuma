@@ -8,7 +8,7 @@ use std::path::PathBuf;
 /// # Examples
 ///
 /// ```rust
-/// use koakuma_core::domain::MacroId;
+/// use korkuma_core::domain::MacroId;
 ///
 /// let id = MacroId::new_v4();
 /// assert!(!id.is_nil());
@@ -20,7 +20,7 @@ pub type MacroId = uuid::Uuid;
 /// # Examples
 ///
 /// ```rust
-/// use koakuma_core::domain::KeyCombo;
+/// use korkuma_core::domain::KeyCombo;
 ///
 /// let combo = KeyCombo {
 ///     modifiers: vec!["Ctrl".to_string(), "Shift".to_string()],
@@ -40,7 +40,7 @@ pub struct KeyCombo {
 /// # Examples
 ///
 /// ```rust
-/// use koakuma_core::domain::ProcessEvent;
+/// use korkuma_core::domain::ProcessEvent;
 ///
 /// let ev = ProcessEvent::Started;
 /// assert!(matches!(ev, ProcessEvent::Started));
@@ -56,7 +56,7 @@ pub enum ProcessEvent {
 /// # Examples
 ///
 /// ```rust
-/// use koakuma_core::domain::FsEventKind;
+/// use korkuma_core::domain::FsEventKind;
 ///
 /// let kind = FsEventKind::Modified;
 /// assert!(matches!(kind, FsEventKind::Modified));
@@ -80,7 +80,7 @@ pub enum VarScope {
 /// # Examples
 ///
 /// ```rust
-/// use koakuma_core::domain::CompareOp;
+/// use korkuma_core::domain::CompareOp;
 ///
 /// let op = CompareOp::Ge;
 /// assert!(matches!(op, CompareOp::Ge));
@@ -100,7 +100,7 @@ pub enum CompareOp {
 /// # Examples
 ///
 /// ```rust
-/// use koakuma_core::domain::ScriptLang;
+/// use korkuma_core::domain::ScriptLang;
 ///
 /// let lang = ScriptLang::Rhai;
 /// assert!(matches!(lang, ScriptLang::Rhai));
@@ -115,7 +115,7 @@ pub enum ScriptLang {
 /// # Examples
 ///
 /// ```rust
-/// use koakuma_core::domain::InputEvent;
+/// use korkuma_core::domain::InputEvent;
 ///
 /// let press = InputEvent::KeyPress { key: "Enter".to_string() };
 /// let click = InputEvent::MouseClick { button: "left".to_string() };
@@ -144,7 +144,7 @@ pub type ValueTemplate = Value;
 /// # Examples
 ///
 /// ```rust
-/// use koakuma_core::domain::{TriggerConfig, KeyCombo};
+/// use korkuma_core::domain::{TriggerConfig, KeyCombo};
 ///
 /// let manual = TriggerConfig::Manual;
 /// let hotkey = TriggerConfig::Hotkey {
@@ -189,7 +189,7 @@ pub enum TriggerConfig {
 /// # Examples
 ///
 /// ```rust
-/// use koakuma_core::domain::ActionConfig;
+/// use korkuma_core::domain::ActionConfig;
 ///
 /// let delay = ActionConfig::Delay { millis: 500 };
 /// let notify = ActionConfig::Notify {
@@ -259,7 +259,7 @@ pub enum ActionConfig {
 /// # Examples
 ///
 /// ```rust
-/// use koakuma_core::domain::ConstraintConfig;
+/// use korkuma_core::domain::ConstraintConfig;
 ///
 /// let time = ConstraintConfig::TimeRange {
 ///     from: "09:00".to_string(),
@@ -317,13 +317,13 @@ impl ConstraintExpr {
     /// # Examples
     ///
     /// ```rust,no_run
-    /// # use koakuma_core::event::{Event, EventKind};
-    /// # use koakuma_core::value::Value;
-    /// # use koakuma_core::context::EvalContext;
-    /// # use koakuma_core::registry::Registry;
-    /// # use koakuma_store::InMemoryStateStore;
+    /// # use korkuma_core::event::{Event, EventKind};
+    /// # use korkuma_core::value::Value;
+    /// # use korkuma_core::context::EvalContext;
+    /// # use korkuma_core::registry::Registry;
+    /// # use korkuma_store::InMemoryStateStore;
     /// # use std::time::SystemTime;
-    /// use koakuma_core::domain::ConstraintExpr;
+    /// use korkuma_core::domain::ConstraintExpr;
     ///
     /// # let event = Event { kind: EventKind::Manual, source: "t".to_string(), timestamp: SystemTime::UNIX_EPOCH, payload: Value::Null };
     /// # let store = InMemoryStateStore::new();
@@ -368,7 +368,7 @@ impl ConstraintExpr {
 /// # Examples
 ///
 /// ```rust
-/// use koakuma_core::domain::WaitCondition;
+/// use korkuma_core::domain::WaitCondition;
 ///
 /// let w = WaitCondition::Duration { millis: 250 };
 /// assert!(matches!(w, WaitCondition::Duration { millis: 250 }));
@@ -402,7 +402,7 @@ pub enum WaitCondition {
 /// # Examples
 ///
 /// ```rust
-/// use koakuma_core::domain::{WorkflowNode, ActionConfig};
+/// use korkuma_core::domain::{WorkflowNode, ActionConfig};
 ///
 /// let wf = WorkflowNode::Seq(vec![
 ///     WorkflowNode::Action(ActionConfig::Delay { millis: 100 }),
@@ -465,7 +465,7 @@ pub enum WorkflowNode {
 /// # Examples
 ///
 /// ```rust
-/// use koakuma_core::domain::TargetSelector;
+/// use korkuma_core::domain::TargetSelector;
 ///
 /// let fg = TargetSelector::Foreground;
 /// let tab = TargetSelector::BrowserTab { url_pattern: "github.com".into() };
@@ -501,7 +501,7 @@ pub type UiPath = String;
 /// # Examples
 ///
 /// ```rust
-/// use koakuma_core::domain::UiOp;
+/// use korkuma_core::domain::UiOp;
 ///
 /// let click = UiOp::Click { node: "#submit".into() };
 /// let set   = UiOp::SetText { node: "#search".into(), text: "hello".into() };
@@ -533,7 +533,7 @@ pub enum UiOp {
 /// # Examples
 ///
 /// ```rust
-/// use koakuma_core::domain::OnNoBackground;
+/// use korkuma_core::domain::OnNoBackground;
 ///
 /// assert!(matches!(OnNoBackground::default(), OnNoBackground::Degrade));
 /// ```
@@ -556,7 +556,7 @@ pub enum OnNoBackground {
 /// # Examples
 ///
 /// ```rust
-/// use koakuma_core::domain::ConcurrencyPolicy;
+/// use korkuma_core::domain::ConcurrencyPolicy;
 ///
 /// let p = ConcurrencyPolicy::Queue { max: 4 };
 /// assert!(matches!(p, ConcurrencyPolicy::Queue { max: 4 }));
@@ -622,8 +622,8 @@ impl Macro {
     /// # Examples
     ///
     /// ```rust
-    /// use koakuma_core::domain::{Macro, ConstraintExpr, TriggerConfig, ActionConfig, WorkflowNode};
-    /// use koakuma_core::permission::PermissionSet;
+    /// use korkuma_core::domain::{Macro, ConstraintExpr, TriggerConfig, ActionConfig, WorkflowNode};
+    /// use korkuma_core::permission::PermissionSet;
     ///
     /// let m = Macro {
     ///     id: uuid::Uuid::nil(),

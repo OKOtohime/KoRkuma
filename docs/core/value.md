@@ -1,6 +1,6 @@
 # `value` — 核心动态值类型
 
-> **Crate**: `koakuma-core` · **文件**: `crates/core/src/value.rs`
+> **Crate**: `korkuma-core` · **文件**: `crates/core/src/value.rs`
 > **最后同步**: 2026-06-02
 
 ## 职责

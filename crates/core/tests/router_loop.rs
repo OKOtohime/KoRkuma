@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 
 use async_trait::async_trait;
-use koakuma_core::{
+use korkuma_core::{
     context::ExecContext,
     domain::{ActionConfig, ConstraintExpr, Macro, TriggerConfig, VarScope},
     engine::EngineEvent,
@@ -19,7 +19,7 @@ use koakuma_core::{
     traits::{Action, Outcome},
     value::Value,
 };
-use koakuma_store::InMemoryStateStore;
+use korkuma_store::InMemoryStateStore;
 
 // ── helpers ────────────────────────────────────────────────────────────────
 

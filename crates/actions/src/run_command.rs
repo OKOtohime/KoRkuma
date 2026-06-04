@@ -1,11 +1,11 @@
 //! [`RunCommandAction`] — executes an external process.
 
 use async_trait::async_trait;
-use koakuma_core::context::ExecContext;
-use koakuma_core::domain::ActionConfig;
-use koakuma_core::error::ActionError;
-use koakuma_core::permission::{Permission, PermissionSet};
-use koakuma_core::traits::{Action, Outcome};
+use korkuma_core::context::ExecContext;
+use korkuma_core::domain::ActionConfig;
+use korkuma_core::error::ActionError;
+use korkuma_core::permission::{Permission, PermissionSet};
+use korkuma_core::traits::{Action, Outcome};
 
 /// Executes an external command, optionally capturing its output.
 ///
@@ -16,7 +16,7 @@ use koakuma_core::traits::{Action, Outcome};
 /// When `capture` is `false` the child process is spawned and the action
 /// returns immediately without waiting. When `capture` is `true` the action
 /// waits for the process to finish, forwards stdout/stderr through
-/// [`LogHandle`](koakuma_core::context::LogHandle), and returns
+/// [`LogHandle`](korkuma_core::context::LogHandle), and returns
 /// [`ActionError::Failed`] if the exit code is non-zero.
 pub struct RunCommandAction {
     program: String,
