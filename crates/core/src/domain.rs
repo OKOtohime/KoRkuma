@@ -231,6 +231,20 @@ pub enum ActionConfig {
         lang: ScriptLang,
         source: String,
     },
+    /// V2: Background UI automation interaction (see DESIGN.md §13).
+    ///
+    /// Executes `op` against `target`, falling back according to `on_no_background`
+    /// when no background-capable backend is available.
+    Interact {
+        /// Which window / tab to target.
+        #[serde(default)]
+        target: TargetSelector,
+        /// The operation to perform.
+        op: UiOp,
+        /// Fallback policy when background is unavailable.
+        #[serde(default)]
+        on_no_background: OnNoBackground,
+    },
     Custom {
         provider: String,
         params: serde_json::Value,
@@ -441,6 +455,97 @@ pub enum WorkflowNode {
     },
     /// Block until `until` is satisfied.
     Wait { until: WaitCondition },
+}
+
+/// Serializable selector for the target of a background interaction.
+///
+/// Attached to [`ActionConfig::Interact`] to describe "which target" without
+/// coupling the action config to a runtime backend.
+///
+/// # Examples
+///
+/// ```rust
+/// use koakuma_core::domain::TargetSelector;
+///
+/// let fg = TargetSelector::Foreground;
+/// let tab = TargetSelector::BrowserTab { url_pattern: "github.com".into() };
+/// assert!(matches!(fg, TargetSelector::Foreground));
+/// assert!(matches!(tab, TargetSelector::BrowserTab { .. }));
+/// ```
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum TargetSelector {
+    /// Send the operation to whatever window currently has focus (V1 default).
+    #[default]
+    Foreground,
+    /// Find the first window whose title matches `title_pattern`.
+    Window { title_pattern: String, regex: bool },
+    /// Find the first window owned by a process named `name`.
+    Process { name: String },
+    /// Find the first browser tab whose URL contains `url_pattern`.
+    BrowserTab { url_pattern: String },
+    /// Plugin-defined selector.
+    Custom { provider: String, params: serde_json::Value },
+}
+
+/// Path to a specific element within a UI tree.
+///
+/// Format is backend-dependent:
+/// - **Windows UIA**: `"name:Submit"` (by accessible name), `"id:btn_ok"` (by AutomationId)
+/// - **CDP / browser**: any CSS selector, e.g. `"#submit"` or `".btn-primary"`
+/// - Empty string or omitted → targets the window/tab root.
+pub type UiPath = String;
+
+/// A backend-agnostic UI operation executed against a [`TargetSelector`].
+///
+/// # Examples
+///
+/// ```rust
+/// use koakuma_core::domain::UiOp;
+///
+/// let click = UiOp::Click { node: "#submit".into() };
+/// let set   = UiOp::SetText { node: "#search".into(), text: "hello".into() };
+/// assert!(matches!(click, UiOp::Click { .. }));
+/// assert!(matches!(set,   UiOp::SetText { .. }));
+/// ```
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(tag = "op")]
+pub enum UiOp {
+    /// Invoke / click the element at `node`.
+    Click { node: UiPath },
+    /// Set the value / text of the element at `node`.
+    SetText { node: UiPath, text: String },
+    /// Dispatch keyboard input.
+    SendKeys { keys: Vec<KeyCombo> },
+    /// Focus the element at `node`, or the root if `None`.
+    Focus {
+        #[serde(default)]
+        node: Option<UiPath>,
+    },
+    /// Read and return the value of the element at `node` (logged via `ctx.log`).
+    ReadValue { node: UiPath },
+}
+
+/// Fallback policy when no background-capable backend is available.
+///
+/// Attached to [`ActionConfig::Interact`] via `on_no_background`.
+///
+/// # Examples
+///
+/// ```rust
+/// use koakuma_core::domain::OnNoBackground;
+///
+/// assert!(matches!(OnNoBackground::default(), OnNoBackground::Degrade));
+/// ```
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub enum OnNoBackground {
+    /// Degrade to foreground-synthetic (requires `ForegroundTakeover` permission).
+    #[default]
+    Degrade,
+    /// Hard-fail; emit an error and abort the action.
+    Fail,
+    /// Queue the operation until the target becomes reachable.
+    Queue,
 }
 
 /// Per-macro policy governing concurrent workflow executions when the same macro

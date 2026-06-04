@@ -1,4 +1,4 @@
-use crate::domain::ActionConfig;
+use crate::domain::{ActionConfig, OnNoBackground, TargetSelector};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -52,6 +52,12 @@ pub enum Permission {
     ScriptExecution,
     ClipboardRead,
     ClipboardWrite,
+    /// Allowed to invoke / click / type into a background window via UIA or PostMessage.
+    WindowInteraction,
+    /// Allowed to execute operations on a browser tab via CDP or WebExtension.
+    BrowserControl,
+    /// Allowed to bring a window to the foreground (required for Degrade fallback).
+    ForegroundTakeover,
 }
 
 /// The set of permissions a [`domain::Macro`] declares it needs.
@@ -152,18 +158,27 @@ impl PermissionGrant {
 /// ```
 pub fn aggregate_from_configs(actions: &[ActionConfig]) -> PermissionSet {
     let mut perms: Vec<Permission> = Vec::new();
+    let mut add = |p: Permission| {
+        if !perms.contains(&p) {
+            perms.push(p);
+        }
+    };
     for action in actions {
-        let required: &[Permission] = match action {
-            ActionConfig::RunCommand { .. } => &[Permission::RunCommand],
-            ActionConfig::SimulateInput { .. } => &[Permission::InputSimulation],
-            ActionConfig::RunScript { .. } => &[Permission::ScriptExecution],
-            ActionConfig::HttpRequest { .. } => &[Permission::Network],
-            _ => &[],
-        };
-        for p in required {
-            if !perms.contains(p) {
-                perms.push(p.clone());
+        match action {
+            ActionConfig::RunCommand { .. } => add(Permission::RunCommand),
+            ActionConfig::SimulateInput { .. } => add(Permission::InputSimulation),
+            ActionConfig::RunScript { .. } => add(Permission::ScriptExecution),
+            ActionConfig::HttpRequest { .. } => add(Permission::Network),
+            ActionConfig::Interact { target, on_no_background, .. } => {
+                match target {
+                    TargetSelector::BrowserTab { .. } => add(Permission::BrowserControl),
+                    _ => add(Permission::WindowInteraction),
+                }
+                if matches!(on_no_background, OnNoBackground::Degrade) {
+                    add(Permission::ForegroundTakeover);
+                }
             }
+            _ => {}
         }
     }
     PermissionSet(perms)
