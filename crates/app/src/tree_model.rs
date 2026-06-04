@@ -168,27 +168,6 @@ pub fn add_constraint_leaf(root: ConstraintExpr, leaf: ConstraintConfig) -> Cons
     }
 }
 
-/// Wrap the entire constraint in an AND group.
-pub fn wrap_constraint_and(root: ConstraintExpr) -> ConstraintExpr {
-    match root {
-        ConstraintExpr::All { .. } => root,
-        other => ConstraintExpr::All { exprs: vec![other] },
-    }
-}
-
-/// Wrap the entire constraint in an OR group.
-pub fn wrap_constraint_or(root: ConstraintExpr) -> ConstraintExpr {
-    match root {
-        ConstraintExpr::Any { .. } => root,
-        other => ConstraintExpr::Any { exprs: vec![other] },
-    }
-}
-
-/// Wrap the entire constraint in NOT.
-pub fn wrap_constraint_not(root: ConstraintExpr) -> ConstraintExpr {
-    ConstraintExpr::Not { expr: Box::new(root) }
-}
-
 /// Replace the params of the Leaf at flat position `pos` with new JSON.
 /// Returns the original tree unchanged if `pos` is out of range or not a Leaf,
 /// or if the JSON fails to parse as a `ConstraintConfig`.
@@ -823,6 +802,295 @@ fn skip_workflow_count(node: &WorkflowNode, counter: &mut usize) {
         }
         _ => {} // leaf nodes consume exactly 1 position (counted at call site)
     }
+}
+
+// ── Constraint wrap-at-position ───────────────────────────────────────────────
+
+fn wrap_expr(expr: ConstraintExpr, kind: &str) -> ConstraintExpr {
+    match kind {
+        "And" => {
+            if matches!(expr, ConstraintExpr::All { .. }) {
+                expr
+            } else {
+                ConstraintExpr::All { exprs: vec![expr] }
+            }
+        }
+        "Or" => {
+            if matches!(expr, ConstraintExpr::Any { .. }) {
+                expr
+            } else {
+                ConstraintExpr::Any { exprs: vec![expr] }
+            }
+        }
+        "Not" => ConstraintExpr::Not { expr: Box::new(expr) },
+        _ => expr,
+    }
+}
+
+fn wrap_constraint_rec(
+    expr: ConstraintExpr,
+    target: usize,
+    kind: &str,
+    counter: &mut usize,
+) -> (ConstraintExpr, bool) {
+    let pos = *counter;
+    *counter += 1;
+    if pos == target {
+        return (wrap_expr(expr, kind), true);
+    }
+    match expr {
+        ConstraintExpr::Not { expr: inner } => {
+            let (new_inner, found) = wrap_constraint_rec(*inner, target, kind, counter);
+            (ConstraintExpr::Not { expr: Box::new(new_inner) }, found)
+        }
+        ConstraintExpr::All { exprs } => {
+            let (new_exprs, found) = wrap_constraint_children_rec(exprs, target, kind, counter);
+            (ConstraintExpr::All { exprs: new_exprs }, found)
+        }
+        ConstraintExpr::Any { exprs } => {
+            let (new_exprs, found) = wrap_constraint_children_rec(exprs, target, kind, counter);
+            (ConstraintExpr::Any { exprs: new_exprs }, found)
+        }
+        other => (other, false),
+    }
+}
+
+fn wrap_constraint_children_rec(
+    exprs: Vec<ConstraintExpr>,
+    target: usize,
+    kind: &str,
+    counter: &mut usize,
+) -> (Vec<ConstraintExpr>, bool) {
+    let mut out = Vec::with_capacity(exprs.len());
+    let mut found = false;
+    for e in exprs {
+        if found {
+            out.push(e);
+        } else {
+            let (new_e, f) = wrap_constraint_rec(e, target, kind, counter);
+            out.push(new_e);
+            found = f;
+        }
+    }
+    (out, found)
+}
+
+/// Wrap the node at flat position `target` with AND/OR/NOT.
+/// Defaults to wrapping the root (position 0) when `target` is `None`.
+pub fn wrap_constraint_at(root: ConstraintExpr, target: Option<usize>, kind: &str) -> ConstraintExpr {
+    let pos = target.unwrap_or(0);
+    let (result, _) = wrap_constraint_rec(root, pos, kind, &mut 0);
+    result
+}
+
+// ── Constraint move-within-siblings ──────────────────────────────────────────
+
+fn constraint_subtree_size(expr: &ConstraintExpr) -> usize {
+    match expr {
+        ConstraintExpr::Always | ConstraintExpr::Leaf { .. } => 1,
+        ConstraintExpr::Not { expr: inner } => 1 + constraint_subtree_size(inner),
+        ConstraintExpr::All { exprs } | ConstraintExpr::Any { exprs } => {
+            1 + exprs.iter().map(constraint_subtree_size).sum::<usize>()
+        }
+    }
+}
+
+fn move_constraint_children(
+    mut exprs: Vec<ConstraintExpr>,
+    target: usize,
+    up: bool,
+    first_child_start: usize,
+) -> (Vec<ConstraintExpr>, bool) {
+    let mut child_starts = Vec::with_capacity(exprs.len());
+    let mut cur = first_child_start;
+    for e in &exprs {
+        child_starts.push(cur);
+        cur += constraint_subtree_size(e);
+    }
+
+    if let Some(i) = child_starts.iter().position(|&s| s == target) {
+        let j = if up {
+            if i > 0 { Some(i - 1) } else { None }
+        } else if i + 1 < exprs.len() {
+            Some(i + 1)
+        } else {
+            None
+        };
+        if let Some(j) = j {
+            exprs.swap(i, j);
+        }
+        return (exprs, true);
+    }
+
+    for i in 0..exprs.len() {
+        let cs = child_starts[i];
+        let c_size = constraint_subtree_size(&exprs[i]);
+        if cs <= target && target < cs + c_size {
+            let child = exprs.remove(i);
+            let (new_child, found) = try_move_constraint(child, target, up, cs);
+            exprs.insert(i, new_child);
+            return (exprs, found);
+        }
+    }
+
+    (exprs, false)
+}
+
+fn try_move_constraint(
+    expr: ConstraintExpr,
+    target: usize,
+    up: bool,
+    start: usize,
+) -> (ConstraintExpr, bool) {
+    match expr {
+        ConstraintExpr::All { exprs } => {
+            let (new_exprs, found) = move_constraint_children(exprs, target, up, start + 1);
+            (ConstraintExpr::All { exprs: new_exprs }, found)
+        }
+        ConstraintExpr::Any { exprs } => {
+            let (new_exprs, found) = move_constraint_children(exprs, target, up, start + 1);
+            (ConstraintExpr::Any { exprs: new_exprs }, found)
+        }
+        ConstraintExpr::Not { expr: inner } => {
+            let (new_inner, found) = try_move_constraint(*inner, target, up, start + 1);
+            (ConstraintExpr::Not { expr: Box::new(new_inner) }, found)
+        }
+        other => (other, false),
+    }
+}
+
+/// Swap the node at flat position `target` with its previous (`up=true`) or next sibling.
+pub fn move_constraint_node(root: ConstraintExpr, target: usize, up: bool) -> ConstraintExpr {
+    let (result, _) = try_move_constraint(root, target, up, 0);
+    result
+}
+
+// ── Workflow move-within-siblings ─────────────────────────────────────────────
+
+fn workflow_subtree_size(node: &WorkflowNode) -> usize {
+    match node {
+        WorkflowNode::Action(_) | WorkflowNode::Wait { .. } => 1,
+        WorkflowNode::Seq(ch) | WorkflowNode::Parallel(ch) => {
+            1 + ch.iter().map(workflow_subtree_size).sum::<usize>()
+        }
+        WorkflowNode::If { then, otherwise, .. } => {
+            // If header + Then label + then body + optional (Else label + else body)
+            2 + workflow_subtree_size(then)
+                + otherwise.as_ref().map(|e| 1 + workflow_subtree_size(e)).unwrap_or(0)
+        }
+        WorkflowNode::While { body, .. }
+        | WorkflowNode::Retry { body, .. }
+        | WorkflowNode::Timeout { body, .. }
+        | WorkflowNode::ForEach { body, .. } => 1 + workflow_subtree_size(body),
+    }
+}
+
+fn move_in_children(
+    mut children: Vec<WorkflowNode>,
+    target: usize,
+    up: bool,
+    first_child_start: usize,
+) -> (Vec<WorkflowNode>, bool) {
+    let mut child_starts = Vec::with_capacity(children.len());
+    let mut cur = first_child_start;
+    for c in &children {
+        child_starts.push(cur);
+        cur += workflow_subtree_size(c);
+    }
+
+    if let Some(i) = child_starts.iter().position(|&s| s == target) {
+        let j = if up {
+            if i > 0 { Some(i - 1) } else { None }
+        } else if i + 1 < children.len() {
+            Some(i + 1)
+        } else {
+            None
+        };
+        if let Some(j) = j {
+            children.swap(i, j);
+        }
+        return (children, true);
+    }
+
+    for i in 0..children.len() {
+        let cs = child_starts[i];
+        let c_size = workflow_subtree_size(&children[i]);
+        if cs <= target && target < cs + c_size {
+            let child = children.remove(i);
+            let (new_child, found) = try_move_in_seq(child, target, up, cs);
+            children.insert(i, new_child);
+            return (children, found);
+        }
+    }
+
+    (children, false)
+}
+
+fn try_move_in_seq(
+    node: WorkflowNode,
+    target: usize,
+    up: bool,
+    start: usize,
+) -> (WorkflowNode, bool) {
+    match node {
+        WorkflowNode::Seq(children) => {
+            let (new_ch, found) = move_in_children(children, target, up, start + 1);
+            (WorkflowNode::Seq(new_ch), found)
+        }
+        WorkflowNode::Parallel(children) => {
+            let (new_ch, found) = move_in_children(children, target, up, start + 1);
+            (WorkflowNode::Parallel(new_ch), found)
+        }
+        WorkflowNode::If { cond, then, otherwise } => {
+            let then_start = start + 2;
+            let then_size = workflow_subtree_size(&then);
+            if then_start <= target && target < then_start + then_size {
+                let (new_then, found) = try_move_in_seq(*then, target, up, then_start);
+                return (WorkflowNode::If { cond, then: Box::new(new_then), otherwise }, found);
+            }
+            if let Some(else_node) = otherwise {
+                let else_start = then_start + then_size + 1;
+                let else_size = workflow_subtree_size(&else_node);
+                if else_start <= target && target < else_start + else_size {
+                    let (new_else, found) =
+                        try_move_in_seq(*else_node, target, up, else_start);
+                    return (
+                        WorkflowNode::If {
+                            cond,
+                            then,
+                            otherwise: Some(Box::new(new_else)),
+                        },
+                        found,
+                    );
+                }
+                return (WorkflowNode::If { cond, then, otherwise: Some(else_node) }, false);
+            }
+            (WorkflowNode::If { cond, then, otherwise: None }, false)
+        }
+        WorkflowNode::While { cond, body, max_iter } => {
+            let (new_body, found) = try_move_in_seq(*body, target, up, start + 1);
+            (WorkflowNode::While { cond, body: Box::new(new_body), max_iter }, found)
+        }
+        WorkflowNode::Retry { body, times, backoff_ms } => {
+            let (new_body, found) = try_move_in_seq(*body, target, up, start + 1);
+            (WorkflowNode::Retry { body: Box::new(new_body), times, backoff_ms }, found)
+        }
+        WorkflowNode::Timeout { body, millis } => {
+            let (new_body, found) = try_move_in_seq(*body, target, up, start + 1);
+            (WorkflowNode::Timeout { body: Box::new(new_body), millis }, found)
+        }
+        WorkflowNode::ForEach { var, items, body } => {
+            let (new_body, found) = try_move_in_seq(*body, target, up, start + 1);
+            (WorkflowNode::ForEach { var, items, body: Box::new(new_body) }, found)
+        }
+        other => (other, false),
+    }
+}
+
+/// Swap the workflow node at flat position `target` with its previous (`up=true`) or next sibling.
+pub fn move_workflow_node(root: WorkflowNode, target: usize, up: bool) -> WorkflowNode {
+    let (result, _) = try_move_in_seq(root, target, up, 0);
+    result
 }
 
 // ── InputEvent helpers (needed for ActionConfig::SimulateInput default) ───────
