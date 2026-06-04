@@ -1,7 +1,7 @@
 # `engine` — 引擎命令与事件协议
 
 > **Crate**: `koakuma-core` · **文件**: `crates/core/src/engine.rs`
-> **最后同步**: 2026-06-02
+> **最后同步**: 2026-06-04 (M2.4：新增 `DryRunMacro` 命令)
 
 ## 职责
 
@@ -31,6 +31,7 @@
 | `DeleteMacro(MacroId)` | 删除宏 |
 | `SetEnabled(MacroId, bool)` | 切换宏的启用状态 |
 | `TriggerManually(MacroId)` | 手动触发一条宏 |
+| `DryRunMacro(MacroId)` | 以 `dry_run=true` 执行宏：动作只记录日志不实际执行（M2.4） |
 | `QuerySnapshot(Sender<EngineSnapshot>)` | 请求引擎当前状态快照，结果通过附带的 channel 返回 |
 | `Shutdown` | 优雅关闭引擎线程 |
 

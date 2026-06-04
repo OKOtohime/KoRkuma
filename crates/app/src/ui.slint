@@ -1,4 +1,6 @@
-import { Button, CheckBox, ListView, TabWidget, TextEdit } from "std-widgets.slint";
+import { Button, CheckBox, ListView, TabWidget, TextEdit, ComboBox, ScrollView, Palette } from "std-widgets.slint";
+
+// ── Shared structs ────────────────────────────────────────────────────────────
 
 export struct MacroItem {
     id: string,
@@ -10,32 +12,84 @@ export struct LogEntry {
     message: string,
 }
 
+/// One row in the flat constraint tree display.
+export struct ConstraintRow {
+    depth: int,
+    kind: string,        // "Always" | "Not" | "All" | "Any" | "Leaf"
+    leaf-type: string,   // for Leaf: "ActiveWindow" | "TimeRange" | ...
+    summary: string,
+    params-json: string,
+}
+
+/// One row in the flat workflow tree display.
+export struct WorkflowRow {
+    depth: int,
+    kind: string,        // "Action" | "Seq" | "Parallel" | "If" | "While" | ...
+    action-type: string, // for Action: "Notify" | "RunCommand" | ...
+    summary: string,
+    params-json: string,
+    is-container: bool,
+}
+
+// ── Main window ───────────────────────────────────────────────────────────────
+
 export component MainWindow inherits Window {
-    width: 920px;
-    height: 620px;
+    width: 1060px;
+    height: 680px;
     title: "Koakuma — Automation Engine";
 
     // ── Model properties ──────────────────────────────────────────────────────
     in property <[MacroItem]> macros;
     in-out property <int> selected-index: -1;
-    in property <string> selected-triggers: "";
-    in property <string> selected-constraints: "";
-    in property <string> selected-actions: "";
     in property <[LogEntry]> logs;
+
+    // Triggers tab (JSON preview, unchanged)
+    in property <string> selected-triggers: "";
+
+    // Constraint tree
+    in property <[ConstraintRow]> constraint-rows;
+    in-out property <int> constraint-selected: -1;
+    in-out property <string> constraint-edit-json: "";
+
+    // Workflow tree
+    in property <[WorkflowRow]> workflow-rows;
+    in-out property <int> workflow-selected: -1;
+    in-out property <string> workflow-edit-json: "";
+
+    // Target selector fields (for the currently selected Interact action)
+    in-out property <string> target-type: "Foreground";
+    in-out property <string> target-pattern: "";
+    in-out property <string> on-no-bg: "Degrade";
 
     // ── Callbacks ─────────────────────────────────────────────────────────────
     callback add-macro();
     callback delete-macro(int);
     callback toggle-enabled(int, bool);
     callback trigger-macro(int);
+    callback dry-run-macro(int);
     callback macro-selected(int);
+
+    // Constraint tree callbacks
+    callback constraint-node-selected(int);
+    callback constraint-update-node(int, string);
+    callback constraint-delete-node(int);
+    callback constraint-add-leaf(string);   // leaf type name
+    callback constraint-wrap(string);       // "And" | "Or" | "Not"
+
+    // Workflow tree callbacks
+    callback workflow-node-selected(int);
+    callback workflow-update-node(int, string);
+    callback workflow-delete-node(int);
+    callback workflow-add-action(string);   // action type name
+    callback workflow-add-if();
+    callback workflow-add-parallel();
 
     HorizontalLayout {
         spacing: 0px;
 
         // ── Left panel: macro list ────────────────────────────────────────────
         VerticalLayout {
-            width: 270px;
+            width: 240px;
             padding: 8px;
             spacing: 6px;
 
@@ -49,11 +103,10 @@ export component MainWindow inherits Window {
                 vertical-stretch: 1;
 
                 for item[idx] in root.macros: Rectangle {
-                    height: 44px;
-                    background: idx == root.selected-index ? #dce8f8 : transparent;
+                    height: 48px;
+                    background: idx == root.selected-index ? Palette.selection-background : transparent;
                     border-radius: 5px;
 
-                    // Background TouchArea for row selection (lower z-order)
                     TouchArea {
                         clicked => {
                             root.selected-index = idx;
@@ -61,40 +114,63 @@ export component MainWindow inherits Window {
                         }
                     }
 
-                    HorizontalLayout {
-                        padding: 4px;
-                        spacing: 4px;
-                        alignment: center;
+                    VerticalLayout {
+                        padding: 2px;
+                        spacing: 0px;
 
-                        CheckBox {
-                            checked: item.enabled;
-                            toggled => { root.toggle-enabled(idx, self.checked); }
-                        }
+                        HorizontalLayout {
+                            padding-left: 4px;
+                            padding-right: 4px;
+                            spacing: 4px;
+                            alignment: center;
 
-                        Text {
-                            text: item.name;
-                            vertical-alignment: center;
-                            horizontal-stretch: 1;
-                            overflow: elide;
-                            font-size: 12px;
-                        }
+                            CheckBox {
+                                checked: item.enabled;
+                                toggled => { root.toggle-enabled(idx, self.checked); }
+                            }
 
-                        Button {
-                            text: "▶";
-                            width: 28px;
-                            height: 28px;
-                            clicked => {
-                                root.selected-index = idx;
-                                root.trigger-macro(idx);
-                                root.macro-selected(idx);
+                            Text {
+                                text: item.name;
+                                vertical-alignment: center;
+                                horizontal-stretch: 1;
+                                overflow: elide;
+                                font-size: 12px;
+                                color: idx == root.selected-index ? Palette.selection-foreground : Palette.foreground;
                             }
                         }
 
-                        Button {
-                            text: "✕";
-                            width: 28px;
-                            height: 28px;
-                            clicked => { root.delete-macro(idx); }
+                        HorizontalLayout {
+                            padding-left: 26px;
+                            padding-right: 4px;
+                            spacing: 3px;
+                            height: 26px;
+
+                            Button {
+                                text: "▶ Run";
+                                height: 22px;
+                                clicked => {
+                                    root.selected-index = idx;
+                                    root.trigger-macro(idx);
+                                    root.macro-selected(idx);
+                                }
+                            }
+
+                            Button {
+                                text: "Dry ▶";
+                                height: 22px;
+                                clicked => {
+                                    root.selected-index = idx;
+                                    root.dry-run-macro(idx);
+                                    root.macro-selected(idx);
+                                }
+                            }
+
+                            Button {
+                                text: "✕";
+                                width: 24px;
+                                height: 22px;
+                                clicked => { root.delete-macro(idx); }
+                            }
                         }
                     }
                 }
@@ -109,7 +185,7 @@ export component MainWindow inherits Window {
         // Vertical separator
         Rectangle {
             width: 1px;
-            background: #cccccc;
+            background: Palette.border;
         }
 
         // ── Right panel: editor + log ─────────────────────────────────────────
@@ -121,6 +197,7 @@ export component MainWindow inherits Window {
             TabWidget {
                 vertical-stretch: 1;
 
+                // ── Triggers tab (JSON preview) ───────────────────────────────
                 Tab {
                     title: "Triggers";
                     TextEdit {
@@ -132,25 +209,380 @@ export component MainWindow inherits Window {
                     }
                 }
 
+                // ── Constraints tab ───────────────────────────────────────────
                 Tab {
                     title: "Constraints";
-                    TextEdit {
-                        text: root.selected-constraints;
-                        read-only: true;
-                        font-family: "monospace";
-                        font-size: 12px;
-                        wrap: word-wrap;
+                    VerticalLayout {
+                        padding: 4px;
+                        spacing: 4px;
+
+                        // Add / wrap buttons
+                        HorizontalLayout {
+                            height: 28px;
+                            spacing: 4px;
+                            alignment: start;
+
+                            Text {
+                                text: "+ Leaf:";
+                                font-size: 11px;
+                                vertical-alignment: center;
+                            }
+
+                            Button {
+                                text: "Window";
+                                height: 24px;
+                                clicked => { root.constraint-add-leaf("ActiveWindow"); }
+                            }
+                            Button {
+                                text: "Time";
+                                height: 24px;
+                                clicked => { root.constraint-add-leaf("TimeRange"); }
+                            }
+                            Button {
+                                text: "Var";
+                                height: 24px;
+                                clicked => { root.constraint-add-leaf("VarCompare"); }
+                            }
+                            Button {
+                                text: "Expr";
+                                height: 24px;
+                                clicked => { root.constraint-add-leaf("Expression"); }
+                            }
+
+                            Rectangle { width: 8px; }
+
+                            Text {
+                                text: "Wrap:";
+                                font-size: 11px;
+                                vertical-alignment: center;
+                            }
+                            Button {
+                                text: "AND";
+                                height: 24px;
+                                clicked => { root.constraint-wrap("And"); }
+                            }
+                            Button {
+                                text: "OR";
+                                height: 24px;
+                                clicked => { root.constraint-wrap("Or"); }
+                            }
+                            Button {
+                                text: "NOT";
+                                height: 24px;
+                                clicked => { root.constraint-wrap("Not"); }
+                            }
+                        }
+
+                        // Tree list
+                        ListView {
+                            vertical-stretch: 1;
+                            min-height: 120px;
+
+                            for row[i] in root.constraint-rows: Rectangle {
+                                height: 26px;
+                                background: i == root.constraint-selected
+                                    ? Palette.selection-background
+                                    : (mod(i, 2) == 0 ? Palette.alternate-background : Palette.background);
+                                border-radius: 3px;
+
+                                TouchArea {
+                                    clicked => {
+                                        root.constraint-selected = i;
+                                        root.constraint-node-selected(i);
+                                    }
+                                }
+
+                                HorizontalLayout {
+                                    padding-top: 2px;
+                                    padding-bottom: 2px;
+                                    padding-left: 4px;
+                                    spacing: 0px;
+
+                                    // Depth indent
+                                    Rectangle { width: row.depth * 16px; }
+
+                                    // Kind icon
+                                    Text {
+                                        width: 20px;
+                                        text: row.kind == "All" ? "⊓"
+                                            : row.kind == "Any" ? "⊔"
+                                            : row.kind == "Not" ? "¬"
+                                            : row.kind == "Leaf" ? "◆"
+                                            : "◇";
+                                        font-size: 13px;
+                                        vertical-alignment: center;
+                                        color: row.kind == "All" ? #4477dd
+                                            : row.kind == "Any" ? #dd6633
+                                            : row.kind == "Not" ? #bb44bb
+                                            : #44bb66;
+                                    }
+
+                                    Text {
+                                        text: row.summary;
+                                        font-size: 11px;
+                                        vertical-alignment: center;
+                                        overflow: elide;
+                                        horizontal-stretch: 1;
+                                        color: i == root.constraint-selected ? Palette.selection-foreground : Palette.foreground;
+                                    }
+                                }
+                            }
+                        }
+
+                        // Separator
+                        Rectangle { height: 1px; background: Palette.border; }
+
+                        // Edit panel
+                        HorizontalLayout {
+                            height: 22px;
+                            spacing: 4px;
+
+                            Text {
+                                text: "Params JSON:";
+                                font-size: 11px;
+                                font-weight: 600;
+                                vertical-alignment: center;
+                                horizontal-stretch: 1;
+                            }
+
+                            Button {
+                                text: "Delete";
+                                height: 22px;
+                                enabled: root.constraint-selected >= 0;
+                                clicked => { root.constraint-delete-node(root.constraint-selected); }
+                            }
+                        }
+
+                        TextEdit {
+                            height: 110px;
+                            text <=> root.constraint-edit-json;
+                            font-family: "monospace";
+                            font-size: 11px;
+                            wrap: word-wrap;
+                        }
+
+                        Button {
+                            height: 26px;
+                            text: "Update Constraint";
+                            enabled: root.constraint-selected >= 0;
+                            clicked => {
+                                root.constraint-update-node(
+                                    root.constraint-selected,
+                                    root.constraint-edit-json
+                                );
+                            }
+                        }
                     }
                 }
 
+                // ── Workflow tab ──────────────────────────────────────────────
                 Tab {
-                    title: "Actions";
-                    TextEdit {
-                        text: root.selected-actions;
-                        read-only: true;
-                        font-family: "monospace";
-                        font-size: 12px;
-                        wrap: word-wrap;
+                    title: "Workflow";
+                    VerticalLayout {
+                        padding: 4px;
+                        spacing: 4px;
+
+                        // Add action buttons
+                        HorizontalLayout {
+                            height: 28px;
+                            spacing: 4px;
+                            alignment: start;
+
+                            Text {
+                                text: "+ Action:";
+                                font-size: 11px;
+                                vertical-alignment: center;
+                            }
+
+                            Button {
+                                text: "Notify";
+                                height: 24px;
+                                clicked => { root.workflow-add-action("Notify"); }
+                            }
+                            Button {
+                                text: "Run";
+                                height: 24px;
+                                clicked => { root.workflow-add-action("RunCommand"); }
+                            }
+                            Button {
+                                text: "Delay";
+                                height: 24px;
+                                clicked => { root.workflow-add-action("Delay"); }
+                            }
+                            Button {
+                                text: "Script";
+                                height: 24px;
+                                clicked => { root.workflow-add-action("RunScript"); }
+                            }
+                            Button {
+                                text: "Interact";
+                                height: 24px;
+                                clicked => { root.workflow-add-action("Interact"); }
+                            }
+
+                            Rectangle { width: 8px; }
+
+                            Text {
+                                text: "Control:";
+                                font-size: 11px;
+                                vertical-alignment: center;
+                            }
+                            Button {
+                                text: "If";
+                                height: 24px;
+                                clicked => { root.workflow-add-if(); }
+                            }
+                            Button {
+                                text: "Parallel";
+                                height: 24px;
+                                clicked => { root.workflow-add-parallel(); }
+                            }
+                        }
+
+                        // Workflow tree list
+                        ListView {
+                            vertical-stretch: 1;
+                            min-height: 100px;
+
+                            for row[i] in root.workflow-rows: Rectangle {
+                                height: 26px;
+                                background: i == root.workflow-selected
+                                    ? Palette.selection-background
+                                    : (mod(i, 2) == 0 ? Palette.alternate-background : Palette.background);
+                                border-radius: 3px;
+
+                                TouchArea {
+                                    clicked => {
+                                        root.workflow-selected = i;
+                                        root.workflow-node-selected(i);
+                                    }
+                                }
+
+                                HorizontalLayout {
+                                    padding-top: 2px;
+                                    padding-bottom: 2px;
+                                    padding-left: 4px;
+                                    spacing: 0px;
+
+                                    // Depth indent
+                                    Rectangle { width: row.depth * 16px; }
+
+                                    // Kind icon
+                                    Text {
+                                        width: 20px;
+                                        text: row.kind == "Action" ? "▣"
+                                            : row.kind == "Seq" ? "↓"
+                                            : row.kind == "Parallel" ? "⇉"
+                                            : row.kind == "If" ? "?"
+                                            : row.kind == "While" ? "↺"
+                                            : row.kind == "Then" ? "▷"
+                                            : row.kind == "Else" ? "▶"
+                                            : "○";
+                                        font-size: 13px;
+                                        vertical-alignment: center;
+                                        color: row.kind == "Action" ? #44aa77
+                                            : row.kind == "If" ? #bbaa33
+                                            : row.kind == "Parallel" ? #4477bb
+                                            : Palette.foreground;
+                                    }
+
+                                    Text {
+                                        text: row.summary;
+                                        font-size: 11px;
+                                        vertical-alignment: center;
+                                        overflow: elide;
+                                        horizontal-stretch: 1;
+                                        color: i == root.workflow-selected ? Palette.selection-foreground : Palette.foreground;
+                                    }
+                                }
+                            }
+                        }
+
+                        // Separator
+                        Rectangle { height: 1px; background: Palette.border; }
+
+                        // Target selector (for Interact actions)
+                        HorizontalLayout {
+                            height: 26px;
+                            spacing: 4px;
+
+                            Text {
+                                text: "Target:";
+                                font-size: 11px;
+                                vertical-alignment: center;
+                                width: 46px;
+                            }
+
+                            ComboBox {
+                                model: ["Foreground", "Window", "Process", "BrowserTab"];
+                                current-value <=> root.target-type;
+                                height: 24px;
+                                width: 110px;
+                            }
+
+                            TextEdit {
+                                text <=> root.target-pattern;
+                                font-size: 11px;
+                                horizontal-stretch: 1;
+                                height: 24px;
+                                enabled: root.target-type != "Foreground";
+                            }
+
+                            Text {
+                                text: "OnNoBg:";
+                                font-size: 11px;
+                                vertical-alignment: center;
+                                width: 52px;
+                            }
+
+                            ComboBox {
+                                model: ["Degrade", "Fail", "Queue"];
+                                current-value <=> root.on-no-bg;
+                                height: 24px;
+                                width: 80px;
+                            }
+                        }
+
+                        // Params edit
+                        HorizontalLayout {
+                            height: 22px;
+                            spacing: 4px;
+
+                            Text {
+                                text: "Params JSON:";
+                                font-size: 11px;
+                                font-weight: 600;
+                                vertical-alignment: center;
+                                horizontal-stretch: 1;
+                            }
+
+                            Button {
+                                text: "Delete";
+                                height: 22px;
+                                enabled: root.workflow-selected >= 0;
+                                clicked => { root.workflow-delete-node(root.workflow-selected); }
+                            }
+                        }
+
+                        TextEdit {
+                            height: 90px;
+                            text <=> root.workflow-edit-json;
+                            font-family: "monospace";
+                            font-size: 11px;
+                            wrap: word-wrap;
+                        }
+
+                        Button {
+                            height: 26px;
+                            text: "Update Action";
+                            enabled: root.workflow-selected >= 0;
+                            clicked => {
+                                root.workflow-update-node(
+                                    root.workflow-selected,
+                                    root.workflow-edit-json
+                                );
+                            }
+                        }
                     }
                 }
             }
@@ -158,12 +590,12 @@ export component MainWindow inherits Window {
             // Horizontal separator
             Rectangle {
                 height: 1px;
-                background: #cccccc;
+                background: Palette.border;
             }
 
             // Log panel
             VerticalLayout {
-                height: 155px;
+                height: 130px;
                 padding: 6px;
                 spacing: 2px;
 

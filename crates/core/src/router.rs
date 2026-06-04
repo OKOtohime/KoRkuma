@@ -181,7 +181,7 @@ impl EventRouter {
             }
 
             output.extend(
-                self.execute_pipeline(macro_id, m, event, registry, store)
+                self.execute_pipeline(macro_id, m, event, registry, store, false)
                     .await,
             );
         }
@@ -264,6 +264,7 @@ impl EventRouter {
                 cancel: CancellationToken::new(),
                 log: LogHandle,
                 resource_pool: scheduler.resource_pool().clone(),
+                dry_run: false,
             };
 
             scheduler.schedule(macro_id, &m.concurrency, ctx, m.root_workflow(), Arc::clone(registry));
@@ -316,7 +317,57 @@ impl EventRouter {
             timestamp: SystemTime::now(),
             payload: Value::Null,
         };
-        self.execute_pipeline(macro_id, m, &event, registry, store)
+        self.execute_pipeline(macro_id, m, &event, registry, store, false)
+            .await
+    }
+
+    /// Fires a macro with `dry_run = true`: logs what each action would do
+    /// without performing any side-effecting operations.
+    ///
+    /// Each action emits an [`EngineEvent::ActionLog`] entry prefixed with
+    /// `[DRY RUN]` instead of executing. Constraint evaluation still runs
+    /// normally, so the macro must be enabled and its constraints must pass.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use koakuma_core::router::EventRouter;
+    ///
+    /// # use std::sync::Arc;
+    /// # use koakuma_core::registry::Registry;
+    /// # use koakuma_store::InMemoryStateStore;
+    /// # let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+    /// # rt.block_on(async {
+    /// let router = EventRouter::new();
+    /// let unknown_id = uuid::Uuid::nil();
+    /// // Returns empty vec for unknown macro IDs.
+    /// let results = router.dispatch_dry_run(
+    ///     unknown_id,
+    ///     &Registry::with_builtins(),
+    ///     &(Arc::new(InMemoryStateStore::new()) as _),
+    /// ).await;
+    /// assert!(results.is_empty());
+    /// # });
+    /// ```
+    pub async fn dispatch_dry_run(
+        &self,
+        macro_id: MacroId,
+        registry: &Registry,
+        store: &Arc<dyn StateStore>,
+    ) -> Vec<EngineEvent> {
+        let Some(m) = self.macros.get(&macro_id) else {
+            return vec![];
+        };
+        if !m.enabled {
+            return vec![];
+        }
+        let event = Event {
+            kind: EventKind::Manual,
+            source: "engine".to_string(),
+            timestamp: SystemTime::now(),
+            payload: Value::Null,
+        };
+        self.execute_pipeline(macro_id, m, &event, registry, store, true)
             .await
     }
 
@@ -353,6 +404,7 @@ impl EventRouter {
         event: &Event,
         registry: &Registry,
         store: &Arc<dyn StateStore>,
+        dry_run: bool,
     ) -> Vec<EngineEvent> {
         let mut output = Vec::new();
 
@@ -392,6 +444,7 @@ impl EventRouter {
             cancel: Default::default(),
             log: LogHandle,
             resource_pool: ResourcePool::default(),
+            dry_run,
         };
 
         let root = m.root_workflow();

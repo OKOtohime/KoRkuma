@@ -1,7 +1,7 @@
 # `koakuma-core` — 核心引擎与领域模型
 
 > **Cargo 包名**: `koakuma-core` · **路径**: `crates/core/`
-> **最后同步**: 2026-06-03 (M2.1)
+> **最后同步**: 2026-06-04 (M2.4：新增 `schema` 模块)
 
 ## 职责概述
 
@@ -25,6 +25,7 @@
 | [`engine`](engine.md) | `src/engine.rs` | 引擎命令/事件协议 (`EngineCommand`、`EngineEvent`) |
 | [`engine_loop`](engine_loop.md) | `src/engine_loop.rs` | `start_engine` — 引擎线程 + 双通道事件循环 + Tokio 运行时 |
 | [`builtins`](builtins.md) | `src/builtins.rs` | 平台无关的内置 trait 实现 |
+| [`schema`](schema.md) | `src/schema.rs` | `ParamSchema` — schema 驱动表单描述符（M2.4） |
 
 ## 对外依赖
 

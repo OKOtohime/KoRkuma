@@ -35,6 +35,7 @@ fn make_ctx(permissions: Vec<Permission>) -> ExecContext {
         cancel: CancellationToken::new(),
         log: LogHandle::default(),
         resource_pool: ResourcePool::new(),
+        dry_run: false,
     }
 }
 

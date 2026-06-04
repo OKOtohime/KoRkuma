@@ -1,7 +1,7 @@
 # `workflow` — 异步工作流引擎
 
 > **Crate**: `koakuma-core` · **文件**: `crates/core/src/workflow.rs`
-> **最后同步**: 2026-06-03 (M2.2 更新：`run_action` 新增资源锁；`NodeFuture + Send`)
+> **最后同步**: 2026-06-04 (M2.4 更新：`run_action` 新增 `dry_run` 短路逻辑)
 
 ## 职责
 
@@ -68,5 +68,4 @@
 - **V1 兼容**：没有 `workflow` 字段的旧宏由 [`Macro::root_workflow`](domain.md) 包装为 `Seq`，语义与 V1 顺序执行完全一致。
 - **M2.2 资源仲裁**：`run_action` 在执行每个动作前调用 `ctx.resource_pool.get_lock(id)` 获取 `Arc<TokioMutex<()>>`，再调用 `lock_owned().await` 持有 `OwnedMutexGuard`，动作完成后 guard 自动释放。此机制通过 `ExecContext.resource_pool` 在同一调度器派发的所有工作流间共享，跨宏资源冲突因此有效。
 - **M2.2 SendΔ**：`NodeFuture` 加了 `+ Send` 约束，允许调度器以 `tokio::spawn` 在多线程运行时并发执行工作流。调用方无需改变，`run_workflow` 接口不变。
-
-**最后同步**: 2026-06-03
+- **M2.4 dry_run**：`run_action` 在权限门控和资源锁之前检查 `ctx.dry_run`；若为 `true`，直接返回一个 `EngineEvent::ActionLog { message: "[DRY RUN] …" }` 并跳过实际执行。仅私有辅助函数 `action_summary` 新增（不影响公开 API）。

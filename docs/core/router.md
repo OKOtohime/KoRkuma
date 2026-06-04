@@ -1,7 +1,7 @@
 # `router` — 事件路由与管道执行
 
 > **Crate**: `koakuma-core` · **文件**: `crates/core/src/router.rs`
-> **最后同步**: 2026-06-03 (M2.2 更新：新增 `dispatch_scheduled`，`dispatch` 加优先级排序)
+> **最后同步**: 2026-06-04 (M2.4 更新：新增 `dispatch_dry_run`；`execute_pipeline` 增加 `dry_run` 参数)
 
 ## 职责
 
@@ -30,6 +30,8 @@
 | `async dispatch(&self, event: &Event, registry: &Registry, store: &Arc<dyn StateStore>) -> Vec<EngineEvent>` | 执行完整管道，返回产生的引擎事件（M2.1 起为 async） |
 | `async dispatch_manual_trigger(&self, macro_id: MacroId, registry: &Registry, store: &Arc<dyn StateStore>) -> Vec<EngineEvent>` | 跳过触发器匹配，直接为指定宏求约束+执行工作流（用于 `EngineCommand::TriggerManually`） |
 | `dispatch_scheduled(&self, event: &Event, registry: &Arc<Registry>, store: &Arc<dyn StateStore>, scheduler: &WorkflowScheduler) -> Vec<EngineEvent>` | M2.2：同步版派发——按 priority 排序后将工作流提交给调度器；立即返回 `MacroFired` 事件 |
+| `async dispatch_manual_trigger(&self, macro_id: MacroId, registry, store) -> Vec<EngineEvent>` | 跳过触发器匹配，直接为指定宏求约束+执行工作流（用于 `TriggerManually`） |
+| `async dispatch_dry_run(&self, macro_id: MacroId, registry, store) -> Vec<EngineEvent>` | 同 `dispatch_manual_trigger`，但 `dry_run=true`：动作只记录 `[DRY RUN]` 日志（M2.4） |
 | `snapshot(&self) -> EngineSnapshot` | 返回当前注册的所有宏的快照（用于 `EngineCommand::QuerySnapshot`） |
 
 #### `dispatch` 执行流程（M2.1）
@@ -78,5 +80,7 @@ event.kind ──► index.get(kind)
 **M2.2**：新增 `dispatch_scheduled`——Router 仍单线程无锁，只负责触发器匹配、约束求值和优先级排序；实际工作流执行交给 `WorkflowScheduler`。原有 `dispatch`（async）保留以供后向兼容（手动触发与测试）。两个路径均按 `Macro.priority` 降序执行。
 
 `dispatch` 与 `dispatch_manual_trigger` 共享私有 `async` 方法 `execute_pipeline`（约束求值 + 工作流执行）。`dispatch_manual_trigger` 跳过触发器类别筛选和 `TriggerSpec::matches`，合成一个 `EventKind::Manual` 事件作为 context。
+
+**M2.4**：新增 `dispatch_dry_run`——与 `dispatch_manual_trigger` 路径相同，但在 `ExecContext` 中设置 `dry_run=true`。`workflow::run_action` 检测到该标志后跳过实际执行，改为发出带 `[DRY RUN]` 前缀的 `ActionLog` 事件，使 UI 可以在不触发副作用的前提下预览工作流执行路径。
 
 **最后同步**: 2026-06-03

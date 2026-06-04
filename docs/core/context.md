@@ -1,7 +1,7 @@
 # `context` — 运行时执行上下文
 
 > **Crate**: `koakuma-core` · **文件**: `crates/core/src/context.rs`
-> **最后同步**: 2026-06-03 (M2.2：新增 `ResourcePool`；`ExecContext` 新增 `resource_pool` 字段)
+> **最后同步**: 2026-06-04 (M2.4：`ExecContext` 新增 `dry_run: bool` 字段)
 
 ## 职责
 
@@ -60,6 +60,7 @@
 | `cancel` | `CancellationToken` | 取消信号 |
 | `log` | `LogHandle` | 日志句柄 |
 | `resource_pool` | `ResourcePool` | 共享资源锁池，来自 `WorkflowScheduler::resource_pool()`（M2.2） |
+| `dry_run` | `bool` | 若为 `true`，动作只记录日志而不实际执行；由 `EngineCommand::DryRunMacro` 设置（M2.4） |
 
 #### `ExecContext` 方法（M2.1）
 

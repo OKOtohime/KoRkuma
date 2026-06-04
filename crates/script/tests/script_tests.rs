@@ -44,6 +44,7 @@ fn exec_ctx(s: Arc<InMemoryStateStore>, perms: Vec<Permission>) -> ExecContext {
         cancel: CancellationToken::default(),
         log: LogHandle::default(),
         resource_pool: Default::default(),
+        dry_run: false,
     }
 }
 

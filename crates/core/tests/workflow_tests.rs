@@ -45,6 +45,7 @@ fn exec_ctx(store: Arc<dyn StateStore>, perms: Vec<Permission>) -> ExecContext {
         cancel: CancellationToken::new(),
         log: LogHandle,
         resource_pool: Default::default(),
+        dry_run: false,
     }
 }
 

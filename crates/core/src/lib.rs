@@ -23,6 +23,7 @@
 
 pub mod builtins;
 pub mod context;
+pub mod schema;
 pub mod domain;
 pub mod engine;
 pub mod engine_loop;

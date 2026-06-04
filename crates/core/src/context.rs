@@ -181,6 +181,9 @@ pub struct ExecContext {
     pub log: LogHandle,
     /// M2.2: shared pool of per-resource async locks (see [`ResourcePool`]).
     pub resource_pool: ResourcePool,
+    /// M2.4: when `true`, actions log what they *would* do instead of executing.
+    /// Set via [`EngineCommand::DryRunMacro`](crate::engine::EngineCommand::DryRunMacro).
+    pub dry_run: bool,
 }
 
 impl ExecContext {
@@ -213,6 +216,7 @@ impl ExecContext {
     ///     cancel: CancellationToken::new(),
     ///     log: LogHandle::default(),
     ///     resource_pool: ResourcePool::default(),
+    ///     dry_run: false,
     /// };
     /// ctx.locals.insert("seed".into(), Value::Int(1));
     /// let fork = ctx.fork();
@@ -228,6 +232,7 @@ impl ExecContext {
             cancel: self.cancel.clone(),
             log: self.log.clone(),
             resource_pool: self.resource_pool.clone(),
+            dry_run: self.dry_run,
         }
     }
 }

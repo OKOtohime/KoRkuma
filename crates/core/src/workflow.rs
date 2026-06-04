@@ -95,6 +95,7 @@ pub enum Flow {
 ///     cancel: CancellationToken::new(),
 ///     log: LogHandle::default(),
 ///     resource_pool: ResourcePool::default(),
+///     dry_run: false,
 /// };
 /// let wf = WorkflowNode::Action(ActionConfig::SetVariable {
 ///     scope: VarScope::Global, key: "k".into(), value: Value::Int(7),
@@ -304,6 +305,28 @@ fn run_node<'a>(
     })
 }
 
+/// Returns a short human-readable description of an action config for dry-run logs.
+fn action_summary(cfg: &crate::domain::ActionConfig) -> String {
+    use crate::domain::ActionConfig;
+    match cfg {
+        ActionConfig::Notify { title, .. } => format!("Notify \"{title}\""),
+        ActionConfig::RunCommand { program, args, .. } => {
+            format!("RunCommand: {program} {}", args.join(" "))
+        }
+        ActionConfig::SimulateInput { sequence } => {
+            format!("SimulateInput ({} events)", sequence.len())
+        }
+        ActionConfig::Delay { millis } => format!("Delay {millis}ms"),
+        ActionConfig::SetVariable { key, .. } => format!("SetVariable ${key}"),
+        ActionConfig::RunScript { .. } => "RunScript".to_string(),
+        ActionConfig::HttpRequest { method, url, .. } => format!("HttpRequest {method} {url}"),
+        ActionConfig::Interact { target, op, .. } => {
+            format!("Interact {op:?} on {target:?}")
+        }
+        ActionConfig::Custom { provider, .. } => format!("Custom:{provider}"),
+    }
+}
+
 /// Builds, permission-gates, acquires resource locks, and awaits a single action.
 async fn run_action(
     cfg: &crate::domain::ActionConfig,
@@ -314,6 +337,19 @@ async fn run_action(
         Ok(a) => a,
         Err(e) => return (Flow::Failed, vec![error_event(ctx, e.to_string())]),
     };
+
+    // Dry-run: skip execution, just log what would happen.
+    if ctx.dry_run {
+        return (
+            Flow::Continue,
+            vec![EngineEvent::ActionLog {
+                macro_id: ctx.macro_id,
+                action: action.id().to_string(),
+                level: crate::engine::LogLevel::Info,
+                message: format!("[DRY RUN] {}", action_summary(cfg)),
+            }],
+        );
+    }
 
     // Central permission gate: every required permission must be granted.
     if let Some(missing) = action

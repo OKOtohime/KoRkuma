@@ -28,6 +28,9 @@ pub enum EngineCommand {
     DeleteMacro(MacroId),
     SetEnabled(MacroId, bool),
     TriggerManually(MacroId),
+    /// Like `TriggerManually` but executes with `dry_run = true` — logs what
+    /// each action *would* do without performing side-effecting operations.
+    DryRunMacro(MacroId),
     QuerySnapshot(crossbeam_channel::Sender<EngineSnapshot>),
     Shutdown,
 }

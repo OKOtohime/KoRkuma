@@ -365,5 +365,6 @@ pub fn test_exec_ctx(
         cancel: CancellationToken::new(),
         log: LogHandle,
         resource_pool: pool,
+        dry_run: false,
     }
 }

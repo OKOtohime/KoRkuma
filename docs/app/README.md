@@ -1,7 +1,7 @@
 # `koakuma-app` — Slint GUI 入口
 
 > **Cargo 包名**: `koakuma-app` · **路径**: `crates/app/`
-> **最后同步**: 2026-06-02
+> **最后同步**: 2026-06-04 (M2.4：新增 `tree_model` 模块)
 
 ## 职责概述
 
@@ -12,6 +12,7 @@
 | 模块 | 文件 | 说明 |
 |------|------|------|
 | [`main`](main.md) | `src/main.rs` | 程序入口：组件组装、UI 回调、热重载 watcher |
+| [`tree_model`](tree_model.md) | `src/tree_model.rs` | 约束/工作流树扁平化与编辑操作（M2.4） |
 | UI 定义 | `src/ui.slint` | Slint DSL UI 布局（不生成独立文档） |
 
 ## 对外依赖

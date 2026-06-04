@@ -190,6 +190,14 @@ fn engine_loop<F>(
                         on_event(ev);
                     }
                 }
+                Ok(EngineCommand::DryRunMacro(id)) => {
+                    let events = runtime.block_on(
+                        router.dispatch_dry_run(id, &registry, &store)
+                    );
+                    for ev in events {
+                        on_event(ev);
+                    }
+                }
                 Ok(EngineCommand::QuerySnapshot(tx)) => {
                     let _ = tx.send(router.snapshot());
                 }

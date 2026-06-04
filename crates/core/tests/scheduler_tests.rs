@@ -50,6 +50,7 @@ fn make_ctx(store: &Arc<dyn StateStore>, pool: ResourcePool) -> ExecContext {
         cancel: CancellationToken::new(),
         log: LogHandle,
         resource_pool: pool,
+        dry_run: false,
     }
 }
 
