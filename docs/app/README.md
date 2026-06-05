@@ -1,17 +1,23 @@
 # `korkuma-app` — Slint GUI 入口
 
 > **Cargo 包名**: `korkuma-app` · **路径**: `crates/app/`
-> **最后同步**: 2026-06-04 (M2.4：新增 `tree_model` 模块)
+> **最后同步**: 2026-06-04 (M2.4 重构：main.rs 拆分为 7 个模块)
 
 ## 职责概述
 
-`korkuma-app` 是可执行文件 `korkuma` 的入口（M1.4），负责：渲染后端探测、构建 `Registry`（注册所有内置 + 平台 provider + Rhai 脚本）、启动引擎线程、桥接 UI 回调与 `EngineCommand`，以及 `macros.json` 热重载。
+`korkuma-app` 是可执行文件 `korkuma` 的入口，负责：渲染后端探测、构建 `Registry`（注册所有内置 + 平台 provider + Rhai 脚本）、启动引擎线程、桥接 UI 回调与 `EngineCommand`，以及 `macros.json` 热重载。
 
 ## 模块索引
 
 | 模块 | 文件 | 说明 |
 |------|------|------|
-| [`main`](main.md) | `src/main.rs` | 程序入口：组件组装、UI 回调、热重载 watcher |
+| [`main`](main.md) | `src/main.rs` | 精简编排入口：组件组装、启动顺序、graceful shutdown |
+| [`setup`](setup.md) | `src/setup.rs` | 区域语言规范化、渲染后端探测（硬件 GL vs 软件回退） |
+| [`trigger`](trigger.md) | `src/trigger.rs` | 触发器配置格式化、UI ↔ 领域双向转换 |
+| [`model`](model.md) | `src/model.rs` | UI 模型刷新、编辑器三面板回填、热重载模型重建 |
+| [`engine_fmt`](engine_fmt.md) | `src/engine_fmt.rs` | 引擎事件 → 日志行格式化 |
+| [`watcher`](watcher.md) | `src/watcher.rs` | macros.json 热重载监听（增量引擎同步） |
+| [`callbacks`](callbacks.md) | `src/callbacks.rs` | 全部 `on_*` 回调注册 + `persist` + 默认宏工厂 |
 | [`tree_model`](tree_model.md) | `src/tree_model.rs` | 约束/工作流树扁平化与编辑操作（M2.4） |
 | UI 定义 | `src/ui.slint` | Slint DSL UI 布局（不生成独立文档） |
 
@@ -32,4 +38,4 @@
 
 ## 构建说明
 
-`build.rs` 调用 `slint_build::compile("src/ui.slint")` 生成 Rust 绑定，`main.rs` 通过 `slint::include_modules!()` 宏引入，生成的 `MainWindow`、`MacroItem`、`LogEntry` struct 可直接使用。
+`build.rs` 调用 `slint_build::compile("src/ui.slint")` 生成 Rust 绑定，`main.rs` 通过 `slint::include_modules!()` 宏引入，生成的 `MainWindow`、`MacroItem`、`LogEntry` 等类型可在子模块中通过 `use crate::TypeName` 引用。
