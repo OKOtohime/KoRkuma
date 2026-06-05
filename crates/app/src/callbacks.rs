@@ -2,14 +2,14 @@ use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use slint::{Model, VecModel};
+use slint::{Model, ModelRc, VecModel};
 
 use korkuma_core::{
     domain::{
         ActionConfig, ConstraintExpr, Macro, OnNoBackground, TargetSelector, TriggerConfig,
     },
     engine::EngineCommand,
-    permission::aggregate_from_configs,
+    permission::{aggregate_from_configs, aggregate_from_workflow},
 };
 use korkuma_store::save_macros;
 
@@ -17,7 +17,8 @@ use crate::{
     ConstraintRow, MacroItem, MainWindow, TriggerRow, WorkflowRow, MACROS_PATH,
 };
 use crate::model::{
-    rebuild_model, refresh_editor, to_slint_constraint_rows, to_slint_workflow_rows,
+    rebuild_model, refresh_editor, refresh_permission_rows, to_slint_constraint_rows,
+    to_slint_workflow_rows,
 };
 use crate::trigger::{
     build_trigger_from_ui, default_trigger_config, populate_trigger_fields,
@@ -794,6 +795,89 @@ pub fn wire_callbacks(
                     if let Some(model) = rc.as_any().downcast_ref::<VecModel<TriggerRow>>() {
                         rebuild_model(model, rows);
                     }
+                }
+            }
+            persist(&list, &suppress_reload);
+        });
+    }
+
+    // ── request-save (open permission approval dialog) ────────────────────────
+    {
+        let local_macros = Arc::clone(&local_macros);
+        let ui_weak = ui_weak.clone();
+        ui.on_request_save(move || {
+            let Some(ui) = ui_weak.upgrade() else { return };
+            let sel = ui.get_selected_index();
+            if sel < 0 {
+                return;
+            }
+            let list = local_macros.lock().unwrap();
+            if let Some(m) = list.get(sel as usize) {
+                let root = m.workflow.clone().unwrap_or_else(|| m.root_workflow());
+                let labels: Vec<slint::SharedString> = aggregate_from_workflow(&root)
+                    .0
+                    .iter()
+                    .map(|p| p.describe().into())
+                    .collect();
+                ui.set_pending_permissions(ModelRc::from(Rc::new(VecModel::from(labels))));
+                ui.set_show_permission_dialog(true);
+            }
+        });
+    }
+
+    // ── approve-permissions (grant aggregated set) ────────────────────────────
+    {
+        let local_macros = Arc::clone(&local_macros);
+        let ui_weak = ui_weak.clone();
+        let engine_sender = engine_sender.clone();
+        let suppress_reload = Arc::clone(&suppress_reload);
+        ui.on_approve_permissions(move || {
+            let Some(ui) = ui_weak.upgrade() else { return };
+            ui.set_show_permission_dialog(false);
+            let sel = ui.get_selected_index();
+            if sel < 0 {
+                return;
+            }
+            let mut list = local_macros.lock().unwrap();
+            if let Some(m) = list.get_mut(sel as usize) {
+                let root = m.workflow.clone().unwrap_or_else(|| m.root_workflow());
+                m.granted_permissions = aggregate_from_workflow(&root);
+                engine_sender.send(EngineCommand::UpdateMacro(m.clone())).ok();
+                refresh_permission_rows(&ui, m);
+            }
+            persist(&list, &suppress_reload);
+        });
+    }
+
+    // ── cancel-permissions ────────────────────────────────────────────────────
+    {
+        let ui_weak = ui_weak.clone();
+        ui.on_cancel_permissions(move || {
+            if let Some(ui) = ui_weak.upgrade() {
+                ui.set_show_permission_dialog(false);
+            }
+        });
+    }
+
+    // ── revoke-permission (per-macro) ─────────────────────────────────────────
+    {
+        let local_macros = Arc::clone(&local_macros);
+        let ui_weak = ui_weak.clone();
+        let engine_sender = engine_sender.clone();
+        let suppress_reload = Arc::clone(&suppress_reload);
+        ui.on_revoke_permission(move |pidx| {
+            let Some(ui) = ui_weak.upgrade() else { return };
+            let sel = ui.get_selected_index();
+            if sel < 0 {
+                return;
+            }
+            let mut list = local_macros.lock().unwrap();
+            if let Some(m) = list.get_mut(sel as usize) {
+                let pidx = pidx as usize;
+                if pidx < m.granted_permissions.0.len() {
+                    m.granted_permissions.0.remove(pidx);
+                    engine_sender.send(EngineCommand::UpdateMacro(m.clone())).ok();
+                    refresh_permission_rows(&ui, m);
                 }
             }
             persist(&list, &suppress_reload);

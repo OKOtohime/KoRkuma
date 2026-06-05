@@ -1,7 +1,7 @@
 # `main` — 程序入口与组件编排
 
 > **Crate**: `korkuma-app` · **文件**: `crates/app/src/main.rs`
-> **最后同步**: 2026-06-04
+> **最后同步**: 2026-06-05 (M2.5：变量监视器 Timer)
 
 ## 职责
 
@@ -83,3 +83,5 @@ main()
 **graceful shutdown 顺序**：先 stop hooks → drop engine（发送 Shutdown + join）。确保引擎退出前不再有新事件入队。
 
 **`slint::include_modules!()` 位置约束**：Slint 代码生成宏必须在 crate root 展开，子模块只能通过 `use crate::` 访问生成类型，不能在子模块内 include。
+
+**M2.5 变量监视器**：`main` 额外创建 `permission_model` / `var_model` 并绑定到 UI。变量监视器由一个 `slint::Timer`（`TimerMode::Repeated`，1s）在 UI 线程周期性调用 `StateStore::snapshot()`，将快照映射为 `VarRow`（值经 `serde_json::to_string`）并重建模型；Timer 句柄需存活至 `ui.run()` 返回（`drop(var_timer)` 显式释放）。直接复用主线程持有的 `store` Arc，无需引擎往返。

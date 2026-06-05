@@ -7,10 +7,15 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use korkuma_core::{
     context::ExecContext,
-    domain::{ActionConfig, ConstraintExpr, Macro, ScriptLang, TriggerConfig},
+    domain::{
+        ActionConfig, ConstraintExpr, Macro, OnNoBackground, ScriptLang, TargetSelector,
+        TriggerConfig, UiOp, WorkflowNode,
+    },
     engine::EngineEvent,
     error::ActionError,
-    permission::{Permission, PermissionSet, aggregate_from_configs},
+    permission::{
+        PathScope, Permission, PermissionSet, aggregate_from_configs, aggregate_from_workflow,
+    },
     registry::Registry,
     router::EventRouter,
     state::StateStore,
@@ -131,6 +136,85 @@ fn aggregate_collects_multiple_distinct_permissions() {
     assert_eq!(set.0.len(), 2, "should have exactly 2 distinct permissions");
     assert!(set.0.contains(&Permission::RunCommand));
     assert!(set.0.contains(&Permission::InputSimulation));
+}
+
+// ── aggregate_from_workflow ───────────────────────────────────────────────────
+
+#[test]
+fn aggregate_workflow_walks_nested_branches() {
+    // RunCommand lives only inside the `If.then` branch; RunScript inside `otherwise`.
+    let wf = WorkflowNode::Seq(vec![
+        WorkflowNode::Action(ActionConfig::Notify {
+            title: "t".into(),
+            body: "b".into(),
+        }),
+        WorkflowNode::If {
+            cond: ConstraintExpr::Always,
+            then: Box::new(WorkflowNode::Action(ActionConfig::RunCommand {
+                program: "echo".into(),
+                args: vec![],
+                capture: false,
+            })),
+            otherwise: Some(Box::new(WorkflowNode::Action(ActionConfig::RunScript {
+                lang: ScriptLang::Rhai,
+                source: "1".into(),
+            }))),
+        },
+    ]);
+    let set = aggregate_from_workflow(&wf);
+    assert_eq!(set.0.len(), 2, "nested branches must be aggregated");
+    assert!(set.0.contains(&Permission::RunCommand));
+    assert!(set.0.contains(&Permission::ScriptExecution));
+}
+
+#[test]
+fn aggregate_workflow_recurses_into_loop_bodies() {
+    let wf = WorkflowNode::Retry {
+        body: Box::new(WorkflowNode::Action(ActionConfig::HttpRequest {
+            method: "GET".into(),
+            url: "https://example.com".into(),
+            body: None,
+        })),
+        times: 3,
+        backoff_ms: 0,
+    };
+    let set = aggregate_from_workflow(&wf);
+    assert_eq!(set.0, vec![Permission::Network]);
+}
+
+#[test]
+fn aggregate_workflow_interact_browser_and_degrade() {
+    let wf = WorkflowNode::Action(ActionConfig::Interact {
+        target: TargetSelector::BrowserTab {
+            url_pattern: "github.com".into(),
+        },
+        op: UiOp::Click { node: "id:ok".into() },
+        on_no_background: OnNoBackground::Degrade,
+    });
+    let set = aggregate_from_workflow(&wf);
+    assert!(set.0.contains(&Permission::BrowserControl));
+    assert!(set.0.contains(&Permission::ForegroundTakeover));
+}
+
+// ── Permission::describe ──────────────────────────────────────────────────────
+
+#[test]
+fn describe_renders_path_scope() {
+    assert_eq!(Permission::Network.describe(), "Network access");
+    assert_eq!(
+        Permission::FileRead {
+            scope: PathScope::Any
+        }
+        .describe(),
+        "File read (any path)"
+    );
+    assert_eq!(
+        Permission::FileWrite {
+            scope: PathScope::Prefix(std::path::PathBuf::from("/tmp"))
+        }
+        .describe(),
+        "File write (under /tmp)"
+    );
 }
 
 // ── Central permission enforcement (EventRouter::execute_pipeline) ────────────

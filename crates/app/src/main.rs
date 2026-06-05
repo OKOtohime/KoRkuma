@@ -74,12 +74,16 @@ fn main() -> Result<(), slint::PlatformError> {
     let trigger_model: Rc<VecModel<TriggerRow>> = Rc::new(VecModel::default());
     let constraint_model: Rc<VecModel<ConstraintRow>> = Rc::new(VecModel::default());
     let workflow_model: Rc<VecModel<WorkflowRow>> = Rc::new(VecModel::default());
+    let permission_model: Rc<VecModel<PermissionRow>> = Rc::new(VecModel::default());
+    let var_model: Rc<VecModel<VarRow>> = Rc::new(VecModel::default());
 
     ui.set_macros(ModelRc::from(macros_model.clone()));
     ui.set_logs(ModelRc::from(logs_model.clone()));
     ui.set_trigger_rows(ModelRc::from(trigger_model.clone()));
     ui.set_constraint_rows(ModelRc::from(constraint_model.clone()));
     ui.set_workflow_rows(ModelRc::from(workflow_model.clone()));
+    ui.set_permission_rows(ModelRc::from(permission_model.clone()));
+    ui.set_var_rows(ModelRc::from(var_model.clone()));
 
     let local_macros: Arc<Mutex<Vec<Macro>>> = Arc::new(Mutex::new(Vec::new()));
 
@@ -143,10 +147,33 @@ fn main() -> Result<(), slint::PlatformError> {
         Arc::clone(&suppress_reload),
     );
 
-    // ── 9. Run UI ─────────────────────────────────────────────────────────────
-    ui.run()?;
+    // ── 9. Variable monitor: poll StateStore snapshot every second ────────────
+    let var_timer = slint::Timer::default();
+    {
+        let store = Arc::clone(&store);
+        let var_model = var_model.clone();
+        var_timer.start(
+            slint::TimerMode::Repeated,
+            std::time::Duration::from_millis(1000),
+            move || {
+                let rows: Vec<VarRow> = store
+                    .snapshot()
+                    .iter()
+                    .map(|(k, v)| VarRow {
+                        key: k.clone().into(),
+                        value: serde_json::to_string(v).unwrap_or_default().into(),
+                    })
+                    .collect();
+                model::rebuild_model(&var_model, rows);
+            },
+        );
+    }
 
-    // ── 10. Graceful shutdown ─────────────────────────────────────────────────
+    // ── 10. Run UI ────────────────────────────────────────────────────────────
+    ui.run()?;
+    drop(var_timer);
+
+    // ── 11. Graceful shutdown ─────────────────────────────────────────────────
     #[cfg(target_os = "windows")]
     {
         let mut providers = _providers;

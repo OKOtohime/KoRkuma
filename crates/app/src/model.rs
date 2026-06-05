@@ -1,9 +1,11 @@
 use slint::{Model, VecModel};
 
 use korkuma_core::domain::Macro;
+use korkuma_core::permission::Permission;
 
 use crate::{
-    ConstraintRow, LogEntry, MacroItem, MainWindow, TriggerRow, WorkflowRow, MACROS_PATH,
+    ConstraintRow, LogEntry, MacroItem, MainWindow, PermissionRow, TriggerRow, WorkflowRow,
+    MACROS_PATH,
 };
 use crate::tree_model::{
     ConstraintTreeRow, WorkflowTreeRow, flatten_constraint, flatten_workflow,
@@ -44,10 +46,29 @@ pub fn to_slint_workflow_rows(rows: &[WorkflowTreeRow]) -> Vec<WorkflowRow> {
         .collect()
 }
 
+pub fn to_permission_rows(perms: &[Permission]) -> Vec<PermissionRow> {
+    perms
+        .iter()
+        .map(|p| PermissionRow {
+            label: p.describe().into(),
+        })
+        .collect()
+}
+
+/// Rebuilds the Permissions-tab list from a macro's granted permissions.
+pub fn refresh_permission_rows(ui: &MainWindow, m: &Macro) {
+    let rows = to_permission_rows(&m.granted_permissions.0);
+    let rc = ui.get_permission_rows();
+    if let Some(model) = rc.as_any().downcast_ref::<VecModel<PermissionRow>>() {
+        rebuild_model(model, rows);
+    }
+}
+
 pub fn refresh_editor(ui: &MainWindow, macros: &[Macro], idx: usize) {
     let Some(m) = macros.get(idx) else { return };
 
     ui.set_macro_name(m.name.clone().into());
+    refresh_permission_rows(ui, m);
 
     let t_rows = to_slint_trigger_rows(&m.triggers);
     let t_rc = ui.get_trigger_rows();

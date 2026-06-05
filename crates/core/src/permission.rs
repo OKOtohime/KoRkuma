@@ -1,4 +1,4 @@
-use crate::domain::{ActionConfig, OnNoBackground, TargetSelector};
+use crate::domain::{ActionConfig, OnNoBackground, TargetSelector, WorkflowNode};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -58,6 +58,51 @@ pub enum Permission {
     BrowserControl,
     /// Allowed to bring a window to the foreground (required for Degrade fallback).
     ForegroundTakeover,
+}
+
+impl Permission {
+    /// Returns a short human-readable label for this permission, including the
+    /// refined path scope for file permissions.
+    ///
+    /// Used by the permission approval dialog and the per-macro permission
+    /// management page so users can read exactly what a macro is authorized to do.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use korkuma_core::permission::{Permission, PathScope};
+    /// use std::path::PathBuf;
+    ///
+    /// assert_eq!(Permission::Network.describe(), "Network access");
+    /// assert_eq!(
+    ///     Permission::FileWrite { scope: PathScope::Prefix(PathBuf::from("/tmp")) }.describe(),
+    ///     "File write (under /tmp)",
+    /// );
+    /// ```
+    pub fn describe(&self) -> String {
+        match self {
+            Permission::InputSimulation => "Input simulation".to_string(),
+            Permission::FileRead { scope } => format!("File read ({})", scope_label(scope)),
+            Permission::FileWrite { scope } => format!("File write ({})", scope_label(scope)),
+            Permission::Network => "Network access".to_string(),
+            Permission::RunCommand => "Run command".to_string(),
+            Permission::ScriptExecution => "Script execution".to_string(),
+            Permission::ClipboardRead => "Clipboard read".to_string(),
+            Permission::ClipboardWrite => "Clipboard write".to_string(),
+            Permission::WindowInteraction => "Background window interaction".to_string(),
+            Permission::BrowserControl => "Browser control".to_string(),
+            Permission::ForegroundTakeover => "Foreground takeover".to_string(),
+        }
+    }
+}
+
+/// Renders a [`PathScope`] as a short suffix for [`Permission::describe`].
+fn scope_label(scope: &PathScope) -> String {
+    match scope {
+        PathScope::Exact(p) => format!("exactly {}", p.display()),
+        PathScope::Prefix(p) => format!("under {}", p.display()),
+        PathScope::Any => "any path".to_string(),
+    }
 }
 
 /// The set of permissions a [`domain::Macro`] declares it needs.
@@ -158,28 +203,86 @@ impl PermissionGrant {
 /// ```
 pub fn aggregate_from_configs(actions: &[ActionConfig]) -> PermissionSet {
     let mut perms: Vec<Permission> = Vec::new();
+    for action in actions {
+        add_action_perms(action, &mut perms);
+    }
+    PermissionSet(perms)
+}
+
+/// Statically aggregates the [`PermissionSet`] required by an entire workflow tree.
+///
+/// Walks every control-flow branch of the [`WorkflowNode`] (`Seq`, `Parallel`,
+/// `If`/`then`/`otherwise`, `While`/`ForEach`/`Retry`/`Timeout` bodies) and unions
+/// the permissions of every reachable [`ActionConfig`]. This is the V2-correct
+/// counterpart of [`aggregate_from_configs`], which only inspects the flat
+/// `Macro::actions` list and misses actions nested inside a workflow tree.
+///
+/// # Examples
+///
+/// ```rust
+/// use korkuma_core::domain::{ActionConfig, ScriptLang, WorkflowNode};
+/// use korkuma_core::permission::{Permission, aggregate_from_workflow};
+///
+/// let wf = WorkflowNode::Seq(vec![
+///     WorkflowNode::Action(ActionConfig::Notify { title: "t".into(), body: "b".into() }),
+///     WorkflowNode::Action(ActionConfig::RunScript {
+///         lang: ScriptLang::Rhai,
+///         source: "1".into(),
+///     }),
+/// ]);
+/// let set = aggregate_from_workflow(&wf);
+/// assert!(set.0.contains(&Permission::ScriptExecution));
+/// assert_eq!(set.0.len(), 1);
+/// ```
+pub fn aggregate_from_workflow(root: &WorkflowNode) -> PermissionSet {
+    let mut perms: Vec<Permission> = Vec::new();
+    collect_workflow_perms(root, &mut perms);
+    PermissionSet(perms)
+}
+
+/// Depth-first walk that appends every reachable action's permissions into `perms`.
+fn collect_workflow_perms(node: &WorkflowNode, perms: &mut Vec<Permission>) {
+    match node {
+        WorkflowNode::Action(a) => add_action_perms(a, perms),
+        WorkflowNode::Seq(children) | WorkflowNode::Parallel(children) => {
+            children.iter().for_each(|c| collect_workflow_perms(c, perms));
+        }
+        WorkflowNode::If { then, otherwise, .. } => {
+            collect_workflow_perms(then, perms);
+            if let Some(otherwise) = otherwise {
+                collect_workflow_perms(otherwise, perms);
+            }
+        }
+        WorkflowNode::While { body, .. }
+        | WorkflowNode::ForEach { body, .. }
+        | WorkflowNode::Retry { body, .. }
+        | WorkflowNode::Timeout { body, .. } => collect_workflow_perms(body, perms),
+        WorkflowNode::Wait { .. } => {}
+    }
+}
+
+/// Appends the permissions required by a single action config, de-duplicating
+/// against entries already present in `perms`.
+fn add_action_perms(action: &ActionConfig, perms: &mut Vec<Permission>) {
     let mut add = |p: Permission| {
         if !perms.contains(&p) {
             perms.push(p);
         }
     };
-    for action in actions {
-        match action {
-            ActionConfig::RunCommand { .. } => add(Permission::RunCommand),
-            ActionConfig::SimulateInput { .. } => add(Permission::InputSimulation),
-            ActionConfig::RunScript { .. } => add(Permission::ScriptExecution),
-            ActionConfig::HttpRequest { .. } => add(Permission::Network),
-            ActionConfig::Interact { target, on_no_background, .. } => {
-                match target {
-                    TargetSelector::BrowserTab { .. } => add(Permission::BrowserControl),
-                    _ => add(Permission::WindowInteraction),
-                }
-                if matches!(on_no_background, OnNoBackground::Degrade) {
-                    add(Permission::ForegroundTakeover);
-                }
+    match action {
+        ActionConfig::RunCommand { .. } => add(Permission::RunCommand),
+        ActionConfig::SimulateInput { .. } => add(Permission::InputSimulation),
+        ActionConfig::RunScript { .. } => add(Permission::ScriptExecution),
+        ActionConfig::HttpRequest { .. } => add(Permission::Network),
+        ActionConfig::Interact { target, on_no_background, .. } => {
+            match target {
+                TargetSelector::BrowserTab { .. } => add(Permission::BrowserControl),
+                _ => add(Permission::WindowInteraction),
             }
-            _ => {}
+            if matches!(on_no_background, OnNoBackground::Degrade) {
+                add(Permission::ForegroundTakeover);
+            }
         }
+        _ => {}
     }
-    PermissionSet(perms)
 }

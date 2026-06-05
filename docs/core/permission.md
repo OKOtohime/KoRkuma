@@ -1,7 +1,7 @@
 # `permission` — 权限声明与运行时授权
 
 > **Crate**: `korkuma-core` · **文件**: `crates/core/src/permission.rs`
-> **最后同步**: 2026-06-04 (M2.3：新增 `WindowInteraction`、`BrowserControl`、`ForegroundTakeover`；`aggregate_from_configs` 重构)
+> **最后同步**: 2026-06-05 (M2.5：新增 `aggregate_from_workflow`、`Permission::describe`；权限聚合下沉到工作流树)
 
 ## 职责
 
@@ -48,7 +48,9 @@
 
 | 签名 | 说明 |
 |------|------|
-| `aggregate_from_configs(actions: &[ActionConfig]) -> PermissionSet` | **M1.4 新增**：静态分析 ActionConfig 列表，返回所需权限的去重并集，用于保存宏时自动填充 `granted_permissions` |
+| `aggregate_from_configs(actions: &[ActionConfig]) -> PermissionSet` | **M1.4 新增**：静态分析扁平 ActionConfig 列表，返回所需权限的去重并集 |
+| `aggregate_from_workflow(root: &WorkflowNode) -> PermissionSet` | **M2.5 新增**：深度优先遍历整个工作流树，聚合所有可达 Action 的权限；修复 `aggregate_from_configs` 漏掉工作流树内嵌套动作的问题，是保存时审批的权限来源 |
+| `Permission::describe(&self) -> String` | **M2.5 新增**：渲染人类可读权限标签（含 `PathScope` 细化），供审批对话框与权限管理页显示 |
 | `PermissionGrant::new(permissions: Vec<Permission>) -> Self` | 直接构建授权对象 |
 | `PermissionGrant::from_set(set: &PermissionSet) -> Self` | 从 `PermissionSet` 转换（宏触发时调用） |
 | `PermissionGrant::allows(&self, permission: &Permission) -> bool` | Action 执行前的权限检查 |
@@ -66,7 +68,11 @@
 | `Interact { target: 其他, .. }` | `WindowInteraction` |
 | `Interact { on_no_background: Degrade, .. }` | +`ForegroundTakeover` |
 
-重复出现的同类 Action 只计一次（闭包内 `Vec::contains` 去重）。`aggregate_from_configs` 在 M2.3 重构为闭包累加风格，支持 `Interact` 的动态权限推断。
+重复出现的同类 Action 只计一次（`Vec::contains` 去重）。M2.5 将单动作的聚合逻辑提取为私有 `add_action_perms`，由 `aggregate_from_configs`（扁平列表）和 `aggregate_from_workflow`（经私有 `collect_workflow_perms` 递归遍历 `Seq`/`Parallel`/`If` 的 `then`+`otherwise`/`While`/`ForEach`/`Retry`/`Timeout` 的 body）共用。
+
+#### `Permission::describe` — 权限标签渲染
+
+返回简短英文标签；文件权限附带 `PathScope` 细化：`Exact(p)` → `exactly <p>`、`Prefix(p)` → `under <p>`、`Any` → `any path`（私有 `scope_label`）。例：`FileWrite { scope: Prefix("/tmp") }` → `"File write (under /tmp)"`。
 
 ## 依赖关系
 
