@@ -6,32 +6,70 @@ msgstr ""
 msgid "KoRkuma"
 msgstr "KoRkuma"
 
+# ── Navigation rail ─────────────────────────────────────────────────────────
 msgid "Macros"
-msgstr "宏"
+msgstr "宏管理"
 
-msgid "▶ Run"
-msgstr "▶ 运行"
+msgid "Settings"
+msgstr "设置"
 
-msgid "Dry ▶"
-msgstr "预演 ▶"
+msgid "About"
+msgstr "关于"
 
-msgid "+ Add Macro"
-msgstr "+ 添加宏"
+# ── Macro sidebar / editor toolbar ──────────────────────────────────────────
+msgid "Add Macro"
+msgstr "添加宏"
 
-msgid "Triggers"
+msgid "Select or add a macro to begin."
+msgstr "选择或添加一个宏以开始。"
+
+msgid "Macro name"
+msgstr "宏名称"
+
+msgid "Save"
+msgstr "保存"
+
+msgid "Run"
+msgstr "运行"
+
+msgid "Dry Run"
+msgstr "预演"
+
+msgid "Delete"
+msgstr "删除"
+
+# ── Editor tabs ─────────────────────────────────────────────────────────────
+msgid "Trigger"
 msgstr "触发器"
 
-msgid "Constraints"
+msgid "Constraint"
 msgstr "约束"
 
 msgid "Workflow"
 msgstr "工作流"
 
-msgid "+ Leaf:"
-msgstr "+ 叶节点:"
+# ── Trigger tab ─────────────────────────────────────────────────────────────
+msgid "Triggers"
+msgstr "触发器"
+
+msgid "Manual"
+msgstr "手动"
+
+msgid "Schedule"
+msgstr "定时"
+
+msgid "Hotkey"
+msgstr "热键"
 
 msgid "Window"
 msgstr "窗口"
+
+msgid "Process"
+msgstr "进程"
+
+# ── Constraint tab ──────────────────────────────────────────────────────────
+msgid "Condition tree"
+msgstr "条件树"
 
 msgid "Time"
 msgstr "时间"
@@ -54,23 +92,12 @@ msgstr "或"
 msgid "NOT"
 msgstr "非"
 
-msgid "Params JSON:"
-msgstr "参数 JSON:"
-
-msgid "Delete"
-msgstr "删除"
-
-msgid "Update Constraint"
-msgstr "更新约束"
-
-msgid "+ Action:"
-msgstr "+ 动作:"
+# ── Workflow tab ────────────────────────────────────────────────────────────
+msgid "Workflow tree"
+msgstr "工作流树"
 
 msgid "Notify"
 msgstr "通知"
-
-msgid "Run"
-msgstr "运行"
 
 msgid "Delay"
 msgstr "延迟"
@@ -90,14 +117,132 @@ msgstr "条件"
 msgid "Parallel"
 msgstr "并行"
 
-msgid "Target:"
-msgstr "目标:"
+# ── Right panel: inspector tabs ─────────────────────────────────────────────
+msgid "Properties"
+msgstr "属性"
 
-msgid "OnNoBg:"
-msgstr "无后台:"
+msgid "Variables"
+msgstr "变量"
 
-msgid "Update Action"
-msgstr "更新动作"
+msgid "Permissions"
+msgstr "权限"
 
-msgid "Log"
+# ── Property inspector ──────────────────────────────────────────────────────
+msgid "Select a trigger to edit its properties."
+msgstr "选择一个触发器以编辑其属性。"
+
+msgid "Manual trigger — no configuration needed."
+msgstr "手动触发 —— 无需配置。"
+
+msgid "Cron expression"
+msgstr "Cron 表达式"
+
+msgid "Window title pattern"
+msgstr "窗口标题模式"
+
+msgid "Regex"
+msgstr "正则"
+
+msgid "Process name"
+msgstr "进程名称"
+
+msgid "Keys (e.g. Ctrl+F1)"
+msgstr "按键（如 Ctrl+F1）"
+
+msgid "Apply"
+msgstr "应用"
+
+msgid "Update"
+msgstr "更新"
+
+msgid "Params (JSON)"
+msgstr "参数 (JSON)"
+
+msgid "Target (Interact actions)"
+msgstr "目标（交互动作）"
+
+# ── Variable inspector ──────────────────────────────────────────────────────
+msgid "Search keys"
+msgstr "搜索键"
+
+msgid "Auto-refreshing every second"
+msgstr "每秒自动刷新"
+
+msgid "Key"
+msgstr "键"
+
+msgid "Value"
+msgstr "值"
+
+msgid "Type"
+msgstr "类型"
+
+# ── Permission inspector / dialog ───────────────────────────────────────────
+msgid "Granted permissions"
+msgstr "已授予权限"
+
+msgid "This macro requires no sensitive permissions."
+msgstr "此宏不需要任何敏感权限。"
+
+msgid "Approve permissions"
+msgstr "批准权限"
+
+msgid "Saving this macro requires granting the following permissions:"
+msgstr "保存此宏需要授予以下权限："
+
+msgid "No sensitive permissions are required."
+msgstr "无需任何敏感权限。"
+
+msgid "Cancel"
+msgstr "取消"
+
+msgid "Approve"
+msgstr "批准"
+
+# ── Bottom drawer ───────────────────────────────────────────────────────────
+msgid "Logs"
 msgstr "日志"
+
+msgid "Events"
+msgstr "事件"
+
+msgid "Errors"
+msgstr "错误"
+
+msgid "Expand"
+msgstr "展开"
+
+msgid "Collapse"
+msgstr "收起"
+
+# ── Settings page ───────────────────────────────────────────────────────────
+msgid "Appearance"
+msgstr "外观"
+
+msgid "Runtime"
+msgstr "运行时"
+
+msgid "Logging"
+msgstr "日志记录"
+
+msgid "Plugins"
+msgstr "插件"
+
+msgid "Theme follows the system light/dark preference."
+msgstr "主题跟随系统的明暗设置。"
+
+msgid "Engine runtime options will appear here."
+msgstr "引擎运行时选项将显示在此处。"
+
+msgid "Log level and retention options will appear here."
+msgstr "日志级别与保留选项将显示在此处。"
+
+msgid "Installed plugins and script extensions will appear here."
+msgstr "已安装的插件与脚本扩展将显示在此处。"
+
+# ── About page ──────────────────────────────────────────────────────────────
+msgid "Cross-platform automation engine — a complete Plan-A solution built with Rust + Slint."
+msgstr "跨平台自动化引擎 —— 基于 Rust + Slint 构建的完整 A 方案。"
+
+msgid "Version 0.1.0"
+msgstr "版本 0.1.0"

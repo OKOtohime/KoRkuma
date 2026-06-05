@@ -1,0 +1,83 @@
+import { CheckBox, CheckState, TonalButton, MaterialText, MaterialTypography, MaterialPalette, MaterialStyleMetrics, ListView } from "@material";
+import { AppIcons } from "../icons.slint";
+import { MacroItem } from "../models.slint";
+
+// Compact macro list: enable toggle + name, with an add button at the bottom.
+// Run / DryRun / Delete / Move are intentionally not shown here (see toolbar).
+export component MacroSidebar {
+    in property <[MacroItem]> macros;
+    in-out property <int> selected-index;
+
+    callback macro-selected(int);
+    callback toggle-enabled(int, bool);
+    callback add-macro();
+
+    Rectangle {
+        background: MaterialPalette.surface;
+
+        VerticalLayout {
+            padding: MaterialStyleMetrics.padding_12;
+            spacing: MaterialStyleMetrics.spacing_12;
+
+            MaterialText {
+                text: @tr("Macros");
+                style: MaterialTypography.title_medium;
+                color: MaterialPalette.on-surface;
+            }
+
+            ListView {
+                vertical-stretch: 1;
+
+                for item[idx] in root.macros : VerticalLayout {
+                    padding-bottom: 4px;
+
+                    Rectangle {
+                        height: 48px;
+                        background: idx == root.selected-index ? MaterialPalette.secondary-container : transparent;
+                        border-radius: MaterialStyleMetrics.border_radius_12;
+
+                        TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => {
+                                root.selected-index = idx;
+                                root.macro-selected(idx);
+                            }
+                        }
+
+                        HorizontalLayout {
+                            padding-left: MaterialStyleMetrics.padding_4;
+                            padding-right: MaterialStyleMetrics.padding_12;
+                            spacing: MaterialStyleMetrics.spacing_8;
+
+                            VerticalLayout {
+                                alignment: center;
+                                horizontal-stretch: 0;
+
+                                CheckBox {
+                                    check-state: item.enabled ? CheckState.checked : CheckState.unchecked;
+                                    checked-state-changed(s) => { root.toggle-enabled(idx, s == CheckState.checked); }
+                                }
+                            }
+
+                            MaterialText {
+                                text: item.name;
+                                vertical-alignment: center;
+                                horizontal-stretch: 1;
+                                overflow: elide;
+                                style: MaterialTypography.body-medium;
+                                color: idx == root.selected-index ? MaterialPalette.on-secondary-container : MaterialPalette.on-surface;
+                            }
+                        }
+                    }
+                }
+            }
+
+            TonalButton {
+                text: @tr("Add Macro");
+                icon: AppIcons.add;
+                height: 40px;
+                clicked => { root.add-macro(); }
+            }
+        }
+    }
+}

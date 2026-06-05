@@ -1,16 +1,30 @@
-use slint::{Model, VecModel};
+use slint::{Global, Model, VecModel};
 
 use korkuma_core::domain::Macro;
 use korkuma_core::permission::Permission;
 
 use crate::{
-    ConstraintRow, LogEntry, MacroItem, MainWindow, PermissionRow, TriggerRow, WorkflowRow,
-    MACROS_PATH,
+    ConstraintRow, LogEntry, LogTableAdapter, MacroItem, MainWindow, PermissionRow, TriggerRow,
+    WorkflowRow, MACROS_PATH,
 };
 use crate::tree_model::{
     ConstraintTreeRow, WorkflowTreeRow, flatten_constraint, flatten_workflow,
 };
 use crate::trigger::to_slint_trigger_rows;
+
+/// Insert `entry` at the front of the log model and bump the table version so
+/// the `StandardTableView` re-evaluates its rows binding.
+pub fn push_log(ui: &MainWindow, entry: LogEntry) {
+    let logs_rc = ui.get_logs();
+    if let Some(logs) = logs_rc.as_any().downcast_ref::<VecModel<LogEntry>>() {
+        logs.insert(0, entry);
+        while logs.row_count() > 500 {
+            logs.remove(logs.row_count() - 1);
+        }
+    }
+    let v = LogTableAdapter::get(ui).get_version();
+    LogTableAdapter::get(ui).set_version(v + 1);
+}
 
 pub fn rebuild_model<T: Clone + 'static>(model: &VecModel<T>, items: Vec<T>) {
     while model.row_count() > 0 {
@@ -85,6 +99,7 @@ pub fn refresh_editor(ui: &MainWindow, macros: &[Macro], idx: usize) {
     }
     ui.set_constraint_selected(-1);
     ui.set_constraint_edit_json("".into());
+    ui.set_constraint_leaf_type("".into());
 
     let root = m.workflow.clone().unwrap_or_else(|| m.root_workflow());
     let w_rows = to_slint_workflow_rows(&flatten_workflow(&root));
@@ -94,6 +109,7 @@ pub fn refresh_editor(ui: &MainWindow, macros: &[Macro], idx: usize) {
     }
     ui.set_workflow_selected(-1);
     ui.set_workflow_edit_json("".into());
+    ui.set_workflow_action_type("".into());
 }
 
 pub fn reload_ui_model(ui: &MainWindow, macros: &[Macro]) {
@@ -116,17 +132,16 @@ pub fn reload_ui_model(ui: &MainWindow, macros: &[Macro]) {
         ui.set_selected_index(-1);
         ui.set_macro_name("".into());
         ui.set_constraint_edit_json("".into());
+        ui.set_constraint_leaf_type("".into());
         ui.set_workflow_edit_json("".into());
+        ui.set_workflow_action_type("".into());
     } else if sel >= 0 {
         refresh_editor(ui, macros, sel as usize);
     }
 
-    let logs_rc = ui.get_logs();
-    if let Some(logs) = logs_rc.as_any().downcast_ref::<VecModel<LogEntry>>() {
-        let msg = format!("[INF] hot-reloaded {} macro(s) from {MACROS_PATH}", macros.len());
-        logs.insert(0, LogEntry { message: msg.into() });
-        while logs.row_count() > 500 {
-            logs.remove(logs.row_count() - 1);
-        }
-    }
+    push_log(ui, LogEntry {
+        level: "INFO".into(),
+        source: "watcher".into(),
+        message: format!("hot-reloaded {} macro(s) from {MACROS_PATH}", macros.len()).into(),
+    });
 }

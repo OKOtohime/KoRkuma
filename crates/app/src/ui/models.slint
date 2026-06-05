@@ -1,0 +1,51 @@
+// ── Shared data structs bridged to/from Rust ────────────────────────────────
+// Field names are part of the Rust↔Slint contract (main.rs, model.rs, callbacks.rs);
+// do not rename without updating the Rust side.
+
+export struct MacroItem {
+    id: string,
+    name: string,
+    enabled: bool,
+}
+
+export struct LogEntry {
+    level: string,      // INFO | WARN | ERROR | DEBUG | EVENT
+    source: string,
+    message: string,
+}
+
+export struct TriggerRow {
+    kind: string,
+    summary: string,
+}
+
+/// One row in the flat constraint tree display.
+export struct ConstraintRow {
+    depth: int,
+    kind: string,        // "Always" | "Not" | "All" | "Any" | "Leaf"
+    leaf-type: string,   // for Leaf: "ActiveWindow" | "TimeRange" | ...
+    summary: string,
+    params-json: string,
+}
+
+/// One row in the flat workflow tree display.
+export struct WorkflowRow {
+    depth: int,
+    kind: string,        // "Action" | "Seq" | "Parallel" | "If" | "While" | ...
+    action-type: string, // for Action: "Notify" | "RunCommand" | ...
+    summary: string,
+    params-json: string,
+    is-container: bool,
+}
+
+/// One granted permission of the currently selected macro.
+export struct PermissionRow {
+    label: string,
+}
+
+/// One variable observed in the global StateStore (variable monitor).
+export struct VarRow {
+    key: string,
+    value: string,
+    value-type: string,
+}

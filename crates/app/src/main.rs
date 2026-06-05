@@ -12,7 +12,7 @@ use std::rc::Rc;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 
-use slint::{Model, ModelRc, VecModel};
+use slint::{Global, Model, ModelRc, StandardListViewItem, VecModel};
 
 use korkuma_actions::register_all as register_actions;
 use korkuma_core::{
@@ -30,13 +30,27 @@ use korkuma_store::{InMemoryStateStore, load_macros};
 
 pub const MACROS_PATH: &str = "macros.json";
 
+/// Value kind shown in the variable inspector's Type column.
+fn value_type(v: &korkuma_core::value::Value) -> &'static str {
+    use korkuma_core::value::Value;
+    match v {
+        Value::Null => "null",
+        Value::Bool(_) => "bool",
+        Value::Int(_) => "int",
+        Value::Float(_) => "float",
+        Value::Str(_) => "string",
+        Value::List(_) => "list",
+        Value::Map(_) => "map",
+    }
+}
+
 fn main() -> Result<(), slint::PlatformError> {
     setup::normalize_lang_for_slint();
     let backend = setup::select_backend();
 
-    println!("╔════════════════════╗");
-    println!("║   KoRkuma (M2.4)   ║");
-    println!("╚════════════════════╝");
+    println!("╔═════════════╗");
+    println!("║   KoRkuma   ║");
+    println!("╚═════════════╝");
     println!("[korkuma] renderer: {backend}");
 
     // ── 1. Registry ───────────────────────────────────────────────────────────
@@ -85,21 +99,36 @@ fn main() -> Result<(), slint::PlatformError> {
     ui.set_permission_rows(ModelRc::from(permission_model.clone()));
     ui.set_var_rows(ModelRc::from(var_model.clone()));
 
+    LogTableAdapter::get(&ui).on_convert(|entries, category, _version| {
+        let rows: Vec<ModelRc<StandardListViewItem>> = entries
+            .iter()
+            .filter(|e| match category.as_str() {
+                "event"   => e.level == "EVENT",
+                "problem" => e.level == "ERROR" || e.level == "WARN",
+                _         => true,
+            })
+            .map(|e| ModelRc::new(VecModel::from(vec![
+                StandardListViewItem::from(e.level.clone()),
+                StandardListViewItem::from(e.source.clone()),
+                StandardListViewItem::from(e.message.clone()),
+            ])))
+            .collect();
+        ModelRc::new(VecModel::from(rows))
+    });
+
     let local_macros: Arc<Mutex<Vec<Macro>>> = Arc::new(Mutex::new(Vec::new()));
 
     // ── 4. Start engine ───────────────────────────────────────────────────────
     let (engine, _event_sink) = start_engine(Arc::clone(&registry), Arc::clone(&store), {
         let ui_weak = ui_weak.clone();
         move |ev| {
-            let msg = engine_fmt::format_engine_event(&ev);
+            let line = engine_fmt::format_engine_event(&ev);
             let _ = ui_weak.upgrade_in_event_loop(move |ui| {
-                let model_rc = ui.get_logs();
-                if let Some(model) = model_rc.as_any().downcast_ref::<VecModel<LogEntry>>() {
-                    model.insert(0, LogEntry { message: msg.into() });
-                    while model.row_count() > 500 {
-                        model.remove(model.row_count() - 1);
-                    }
-                }
+                model::push_log(&ui, LogEntry {
+                    level: line.level.into(),
+                    source: line.source.into(),
+                    message: line.message.into(),
+                });
             });
         }
     });
@@ -152,16 +181,23 @@ fn main() -> Result<(), slint::PlatformError> {
     {
         let store = Arc::clone(&store);
         let var_model = var_model.clone();
+        let ui_weak = ui.as_weak();
         var_timer.start(
             slint::TimerMode::Repeated,
             std::time::Duration::from_millis(1000),
             move || {
+                let filter = ui_weak
+                    .upgrade()
+                    .map(|ui| ui.get_var_filter().to_string().to_lowercase())
+                    .unwrap_or_default();
                 let rows: Vec<VarRow> = store
                     .snapshot()
                     .iter()
+                    .filter(|(k, _)| filter.is_empty() || k.to_lowercase().contains(&filter))
                     .map(|(k, v)| VarRow {
                         key: k.clone().into(),
                         value: serde_json::to_string(v).unwrap_or_default().into(),
+                        value_type: value_type(v).into(),
                     })
                     .collect();
                 model::rebuild_model(&var_model, rows);

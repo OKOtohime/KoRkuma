@@ -1,0 +1,145 @@
+import { SecondaryTabBar, MaterialPalette, MaterialStyleMetrics } from "@material";
+import { PropertyInspector } from "PropertyInspector.slint";
+import { VariableInspector } from "VariableInspector.slint";
+import { PermissionInspector } from "PermissionInspector.slint";
+import { VarRow, PermissionRow } from "../models.slint";
+
+// Right inspector column: a Material secondary tab bar switching between the
+// context property editor, the live variable monitor, and the permission view.
+//   inspector-tab: 0 Properties · 1 Variables · 2 Permissions
+export component RightPanel {
+    in property <int> editor-kind;
+    in-out property <int> inspector-tab;
+
+    // ── Trigger pass-throughs ───────────────────────────────────────────────
+    in-out property <int> trigger-selected;
+    in-out property <string> trigger-kind;
+    in-out property <int> trigger-cron-preset-idx;
+    in-out property <string> trigger-cron;
+    in-out property <string> trigger-title-pat;
+    in-out property <bool> trigger-use-regex;
+    in-out property <string> trigger-proc-name;
+    in-out property <int> trigger-proc-event-idx;
+    in-out property <int> trigger-hotkey-mod1-idx;
+    in-out property <int> trigger-hotkey-mod2-idx;
+    in-out property <int> trigger-hotkey-key-idx;
+    callback trigger-apply();
+    callback trigger-delete(int);
+
+    // ── Constraint pass-throughs ────────────────────────────────────────────
+    in-out property <int> constraint-selected;
+    in-out property <string> constraint-leaf-type;
+    in-out property <string> c-aw-title;
+    in-out property <bool> c-aw-regex;
+    in-out property <string> c-tr-from;
+    in-out property <string> c-tr-to;
+    in-out property <string> c-vc-key;
+    in-out property <int> c-vc-op-idx;
+    in-out property <string> c-vc-value;
+    in-out property <string> c-expr-dsl;
+    callback constraint-update();
+    callback constraint-delete-node(int);
+
+    // ── Workflow pass-throughs ──────────────────────────────────────────────
+    in-out property <int> workflow-selected;
+    in-out property <string> workflow-action-type;
+    in-out property <string> wf-notify-title;
+    in-out property <string> wf-notify-body;
+    in-out property <string> wf-run-program;
+    in-out property <string> wf-run-args;
+    in-out property <bool> wf-run-capture;
+    in-out property <int> wf-script-lang-idx;
+    in-out property <string> wf-script-source;
+    in-out property <string> wf-delay-ms;
+    in-out property <int> target-type-idx;
+    in-out property <string> target-pattern;
+    in-out property <int> on-no-bg-idx;
+    in-out property <string> workflow-edit-json;
+    callback workflow-update();
+    callback workflow-delete-node(int);
+
+    // ── Variable inspector ──────────────────────────────────────────────────
+    in property <[VarRow]> vars;
+    in-out property <string> var-filter;
+
+    // ── Permission inspector ────────────────────────────────────────────────
+    in property <[PermissionRow]> permission-rows;
+    in property <int> selected-index;
+
+    Rectangle {
+        background: MaterialPalette.surface;
+
+        VerticalLayout {
+            SecondaryTabBar {
+                current-index <=> root.inspector-tab;
+                items: [
+                    { text: @tr("Properties") },
+                    { text: @tr("Variables") },
+                    { text: @tr("Permissions") },
+                ];
+            }
+
+            VerticalLayout {
+                vertical-stretch: 1;
+
+                if root.inspector-tab == 0 : PropertyInspector {
+                    editor-kind: root.editor-kind;
+
+                    trigger-selected <=> root.trigger-selected;
+                    trigger-kind <=> root.trigger-kind;
+                    trigger-cron-preset-idx <=> root.trigger-cron-preset-idx;
+                    trigger-cron <=> root.trigger-cron;
+                    trigger-title-pat <=> root.trigger-title-pat;
+                    trigger-use-regex <=> root.trigger-use-regex;
+                    trigger-proc-name <=> root.trigger-proc-name;
+                    trigger-proc-event-idx <=> root.trigger-proc-event-idx;
+                    trigger-hotkey-mod1-idx <=> root.trigger-hotkey-mod1-idx;
+                    trigger-hotkey-mod2-idx <=> root.trigger-hotkey-mod2-idx;
+                    trigger-hotkey-key-idx <=> root.trigger-hotkey-key-idx;
+                    trigger-apply() => { root.trigger-apply(); }
+                    trigger-delete(i) => { root.trigger-delete(i); }
+
+                    constraint-selected <=> root.constraint-selected;
+                    constraint-leaf-type <=> root.constraint-leaf-type;
+                    c-aw-title <=> root.c-aw-title;
+                    c-aw-regex <=> root.c-aw-regex;
+                    c-tr-from <=> root.c-tr-from;
+                    c-tr-to <=> root.c-tr-to;
+                    c-vc-key <=> root.c-vc-key;
+                    c-vc-op-idx <=> root.c-vc-op-idx;
+                    c-vc-value <=> root.c-vc-value;
+                    c-expr-dsl <=> root.c-expr-dsl;
+                    constraint-update() => { root.constraint-update(); }
+                    constraint-delete-node(i) => { root.constraint-delete-node(i); }
+
+                    workflow-selected <=> root.workflow-selected;
+                    workflow-action-type <=> root.workflow-action-type;
+                    wf-notify-title <=> root.wf-notify-title;
+                    wf-notify-body <=> root.wf-notify-body;
+                    wf-run-program <=> root.wf-run-program;
+                    wf-run-args <=> root.wf-run-args;
+                    wf-run-capture <=> root.wf-run-capture;
+                    wf-script-lang-idx <=> root.wf-script-lang-idx;
+                    wf-script-source <=> root.wf-script-source;
+                    wf-delay-ms <=> root.wf-delay-ms;
+                    target-type-idx <=> root.target-type-idx;
+                    target-pattern <=> root.target-pattern;
+                    on-no-bg-idx <=> root.on-no-bg-idx;
+                    workflow-edit-json <=> root.workflow-edit-json;
+                    workflow-update() => { root.workflow-update(); }
+                    workflow-delete-node(i) => { root.workflow-delete-node(i); }
+                }
+
+                if root.inspector-tab == 1 : VariableInspector {
+                    vars: root.vars;
+                    filter <=> root.var-filter;
+                }
+
+                if root.inspector-tab == 2 : PermissionInspector {
+                    rows: root.permission-rows;
+                    selected-index: root.selected-index;
+                }
+            }
+        }
+    }
+}

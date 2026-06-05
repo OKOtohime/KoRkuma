@@ -1,0 +1,36 @@
+import { MaterialText, MaterialTypography, MaterialPalette, MaterialStyleMetrics } from "@material";
+import { SectionCard } from "../widgets/SectionCard.slint";
+
+// About page.
+export component AboutPage {
+    VerticalLayout {
+        padding: MaterialStyleMetrics.padding_24;
+        spacing: MaterialStyleMetrics.spacing_16;
+
+        MaterialText {
+            text: @tr("About");
+            style: MaterialTypography.headline-small;
+            color: MaterialPalette.on-surface;
+        }
+
+        SectionCard {
+            MaterialText {
+                text: "KoRkuma";
+                style: MaterialTypography.headline-medium;
+                color: MaterialPalette.primary;
+            }
+            MaterialText {
+                text: @tr("Experimental cross-platform automation engine, built with Rust + Slint.");
+                wrap: word-wrap;
+                style: MaterialTypography.body-medium;
+                color: MaterialPalette.on-surface;
+            }
+            MaterialText {
+                text: @tr("Version 0.1.0");
+                style: MaterialTypography.body-small;
+                color: MaterialPalette.on-surface-variant;
+            }
+            Rectangle { vertical-stretch: 1; }
+        }
+    }
+}

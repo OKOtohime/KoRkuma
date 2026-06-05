@@ -1,0 +1,450 @@
+import { DropDownMenu, MenuItem, TextField, Switch, OutlineButton, TonalButton, MaterialText, MaterialTypography, MaterialPalette, MaterialStyleMetrics } from "@material";
+import { TextEdit } from "std-widgets.slint";
+
+// Context-sensitive property editor for the currently selected tree node.
+//   editor-kind: 0 = Trigger · 1 = Constraint · 2 = Workflow
+export component PropertyInspector {
+    in property <int> editor-kind;
+
+    // ── Trigger ──────────────────────────────────────────────────────────────
+    in-out property <int> trigger-selected;
+    in-out property <string> trigger-kind;
+    // Schedule: preset index (0=minute 1=hour 2=day 3=weekday 4=week 5=month 6=year 7=custom)
+    in-out property <int> trigger-cron-preset-idx: 7;
+    in-out property <string> trigger-cron;
+    // WindowFocus
+    in-out property <string> trigger-title-pat;
+    in-out property <bool> trigger-use-regex;
+    // Process: event index (0=Started 1=Stopped)
+    in-out property <string> trigger-proc-name;
+    in-out property <int> trigger-proc-event-idx;
+    // Hotkey: mod indices (0=None 1=Ctrl 2=Alt 3=Shift 4=Win 5=Meta), key index (0=none 1..=A-Z 27..=F1-F12 39..=0-9 ...)
+    in-out property <int> trigger-hotkey-mod1-idx;
+    in-out property <int> trigger-hotkey-mod2-idx;
+    in-out property <int> trigger-hotkey-key-idx;
+    callback trigger-apply();
+    callback trigger-delete(int);
+
+    // ── Constraint ───────────────────────────────────────────────────────────
+    in-out property <int> constraint-selected;
+    in-out property <string> constraint-leaf-type;
+    in-out property <string> c-aw-title;
+    in-out property <bool> c-aw-regex;
+    in-out property <string> c-tr-from;
+    in-out property <string> c-tr-to;
+    // VarCompare: op index (0=Eq 1=Ne 2=Lt 3=Gt 4=Le 5=Ge)
+    in-out property <string> c-vc-key;
+    in-out property <int> c-vc-op-idx;
+    in-out property <string> c-vc-value;
+    in-out property <string> c-expr-dsl;
+    callback constraint-update();
+    callback constraint-delete-node(int);
+
+    // ── Workflow ─────────────────────────────────────────────────────────────
+    in-out property <int> workflow-selected;
+    in-out property <string> workflow-action-type;
+    in-out property <string> wf-notify-title;
+    in-out property <string> wf-notify-body;
+    in-out property <string> wf-run-program;
+    in-out property <string> wf-run-args;
+    in-out property <bool> wf-run-capture;
+    // RunScript: lang index (0=Rhai)
+    in-out property <int> wf-script-lang-idx;
+    in-out property <string> wf-script-source;
+    in-out property <string> wf-delay-ms;
+    // Interact: target index (0=Foreground 1=Window 2=Process 3=BrowserTab), on-no-bg (0=Degrade 1=Fail 2=Queue)
+    in-out property <int> target-type-idx;
+    in-out property <string> target-pattern;
+    in-out property <int> on-no-bg-idx;
+    in-out property <string> workflow-edit-json;
+    callback workflow-update();
+    callback workflow-delete-node(int);
+
+    // MenuItem arrays — enabled:true is mandatory; Slint bool fields default to false which disables items.
+    property <[MenuItem]> cron-items: [
+        { text: @tr("Every minute"), enabled: true },
+        { text: @tr("Every hour"), enabled: true },
+        { text: @tr("Every day"), enabled: true },
+        { text: @tr("Weekdays (Mon–Fri)"), enabled: true },
+        { text: @tr("Every week"), enabled: true },
+        { text: @tr("Every month"), enabled: true },
+        { text: @tr("Every year"), enabled: true },
+        { text: @tr("Custom cron"), enabled: true },
+    ];
+    property <[MenuItem]> proc-event-items: [
+        { text: @tr("Started"), enabled: true },
+        { text: @tr("Stopped"), enabled: true },
+    ];
+    property <[MenuItem]> mod-items: [
+        { text: "None", enabled: true }, { text: "Ctrl", enabled: true }, { text: "Alt", enabled: true },
+        { text: "Shift", enabled: true }, { text: "Win", enabled: true }, { text: "Meta", enabled: true },
+    ];
+    property <[MenuItem]> key-items: [
+        { text: "", enabled: true },
+        { text: "A", enabled: true }, { text: "B", enabled: true }, { text: "C", enabled: true }, { text: "D", enabled: true },
+        { text: "E", enabled: true }, { text: "F", enabled: true }, { text: "G", enabled: true }, { text: "H", enabled: true },
+        { text: "I", enabled: true }, { text: "J", enabled: true }, { text: "K", enabled: true }, { text: "L", enabled: true },
+        { text: "M", enabled: true }, { text: "N", enabled: true }, { text: "O", enabled: true }, { text: "P", enabled: true },
+        { text: "Q", enabled: true }, { text: "R", enabled: true }, { text: "S", enabled: true }, { text: "T", enabled: true },
+        { text: "U", enabled: true }, { text: "V", enabled: true }, { text: "W", enabled: true }, { text: "X", enabled: true },
+        { text: "Y", enabled: true }, { text: "Z", enabled: true },
+        { text: "F1", enabled: true }, { text: "F2", enabled: true }, { text: "F3", enabled: true }, { text: "F4", enabled: true },
+        { text: "F5", enabled: true }, { text: "F6", enabled: true }, { text: "F7", enabled: true }, { text: "F8", enabled: true },
+        { text: "F9", enabled: true }, { text: "F10", enabled: true }, { text: "F11", enabled: true }, { text: "F12", enabled: true },
+        { text: "0", enabled: true }, { text: "1", enabled: true }, { text: "2", enabled: true }, { text: "3", enabled: true },
+        { text: "4", enabled: true }, { text: "5", enabled: true }, { text: "6", enabled: true }, { text: "7", enabled: true },
+        { text: "8", enabled: true }, { text: "9", enabled: true },
+        { text: "Space", enabled: true }, { text: "Enter", enabled: true }, { text: "Tab", enabled: true },
+        { text: "Escape", enabled: true }, { text: "Delete", enabled: true }, { text: "Backspace", enabled: true },
+        { text: "Insert", enabled: true }, { text: "Home", enabled: true }, { text: "End", enabled: true },
+        { text: "PageUp", enabled: true }, { text: "PageDown", enabled: true },
+        { text: "Left", enabled: true }, { text: "Right", enabled: true }, { text: "Up", enabled: true }, { text: "Down", enabled: true },
+    ];
+    property <[MenuItem]> cmp-op-items: [
+        { text: "== (Eq)", enabled: true }, { text: "!= (Ne)", enabled: true },
+        { text: "< (Lt)",  enabled: true }, { text: "> (Gt)",  enabled: true },
+        { text: "<= (Le)", enabled: true }, { text: ">= (Ge)", enabled: true },
+    ];
+    property <[MenuItem]> target-items: [
+        { text: "Foreground", enabled: true }, { text: "Window", enabled: true },
+        { text: "Process", enabled: true }, { text: "BrowserTab", enabled: true },
+    ];
+    property <[MenuItem]> nobg-items: [
+        { text: "Degrade", enabled: true }, { text: "Fail", enabled: true }, { text: "Queue", enabled: true },
+    ];
+    property <[MenuItem]> lang-items: [
+        { text: "Rhai", enabled: true },
+    ];
+
+    VerticalLayout {
+        padding: MaterialStyleMetrics.padding_16;
+        spacing: MaterialStyleMetrics.spacing_12;
+
+        // ── Trigger editor ──────────────────────────────────────────────────
+        if root.editor-kind == 0 : VerticalLayout {
+            spacing: MaterialStyleMetrics.spacing_12;
+            vertical-stretch: 1;
+
+            if root.trigger-selected < 0 : MaterialText {
+                text: @tr("Select a trigger to edit its properties.");
+                wrap: word-wrap;
+                style: MaterialTypography.body-medium;
+                color: MaterialPalette.on-surface-variant;
+            }
+
+            if root.trigger-selected >= 0 && root.trigger-kind == "Manual" : MaterialText {
+                text: @tr("Manual trigger — no configuration needed.");
+                style: MaterialTypography.body-medium;
+                color: MaterialPalette.on-surface-variant;
+            }
+
+            if root.trigger-selected >= 0 && root.trigger-kind == "Schedule" : VerticalLayout {
+                spacing: MaterialStyleMetrics.spacing_8;
+                DropDownMenu {
+                    label: @tr("Interval");
+                    vertical-stretch: 0;
+                    items: root.cron-items;
+                    current_index <=> root.trigger-cron-preset-idx;
+                }
+                if root.trigger-cron-preset-idx == 7 : TextField {
+                    label: @tr("Cron expression (min hr dom mon dow)");
+                    placeholder-text: "* * * * *";
+                    text <=> root.trigger-cron;
+                }
+            }
+
+            if root.trigger-selected >= 0 && root.trigger-kind == "WindowFocus" : VerticalLayout {
+                spacing: MaterialStyleMetrics.spacing_8;
+                TextField { label: @tr("Window title pattern"); text <=> root.trigger-title-pat; }
+                HorizontalLayout {
+                    spacing: MaterialStyleMetrics.spacing_8;
+                    VerticalLayout { alignment: center; Switch { checked <=> root.trigger-use-regex; } }
+                    MaterialText { text: @tr("Use regex"); vertical-alignment: center; style: MaterialTypography.body-medium; color: MaterialPalette.on-surface; }
+                }
+            }
+
+            if root.trigger-selected >= 0 && root.trigger-kind == "Process" : VerticalLayout {
+                spacing: MaterialStyleMetrics.spacing_8;
+                TextField { label: @tr("Process name"); text <=> root.trigger-proc-name; }
+                DropDownMenu {
+                    label: @tr("Event");
+                    vertical-stretch: 0;
+                    items: root.proc-event-items;
+                    current_index <=> root.trigger-proc-event-idx;
+                }
+            }
+
+            if root.trigger-selected >= 0 && root.trigger-kind == "Hotkey" : VerticalLayout {
+                spacing: MaterialStyleMetrics.spacing_8;
+
+                if root.trigger-hotkey-mod1-idx != 0 && root.trigger-hotkey-mod1-idx == root.trigger-hotkey-mod2-idx : MaterialText {
+                    text: @tr("⚠ Duplicate modifier — one will be ignored on apply.");
+                    style: MaterialTypography.label-small;
+                    color: MaterialPalette.error;
+                }
+
+                HorizontalLayout {
+                    spacing: MaterialStyleMetrics.spacing_8;
+                    DropDownMenu {
+                        label: @tr("Mod 1");
+                        horizontal-stretch: 1;
+                        vertical-stretch: 0;
+                        items: root.mod-items;
+                        current_index <=> root.trigger-hotkey-mod1-idx;
+                    }
+                    MaterialText { text: "+"; vertical-alignment: center; style: MaterialTypography.title-medium; color: MaterialPalette.on-surface-variant; }
+                    DropDownMenu {
+                        label: @tr("Mod 2");
+                        horizontal-stretch: 1;
+                        vertical-stretch: 0;
+                        items: root.mod-items;
+                        current_index <=> root.trigger-hotkey-mod2-idx;
+                    }
+                    MaterialText { text: "+"; vertical-alignment: center; style: MaterialTypography.title-medium; color: MaterialPalette.on-surface-variant; }
+                    DropDownMenu {
+                        label: @tr("Key");
+                        horizontal-stretch: 2;
+                        vertical-stretch: 0;
+                        items: root.key-items;
+                        current_index <=> root.trigger-hotkey-key-idx;
+                    }
+                }
+            }
+
+            Rectangle { vertical-stretch: 1; }
+
+            HorizontalLayout {
+                spacing: MaterialStyleMetrics.spacing_8;
+                OutlineButton {
+                    text: @tr("Delete");
+                    enabled: root.trigger-selected >= 0;
+                    height: 40px;
+                    clicked => { root.trigger-delete(root.trigger-selected); }
+                }
+                Rectangle { horizontal-stretch: 1; }
+                TonalButton {
+                    text: @tr("Apply");
+                    enabled: root.trigger-selected >= 0 && root.trigger-kind != "Manual";
+                    height: 40px;
+                    clicked => { root.trigger-apply(); }
+                }
+            }
+        }
+
+        // ── Constraint editor ───────────────────────────────────────────────
+        if root.editor-kind == 1 : VerticalLayout {
+            spacing: MaterialStyleMetrics.spacing_8;
+            vertical-stretch: 1;
+
+            if root.constraint-selected < 0 : MaterialText {
+                text: @tr("Select a constraint node to edit its properties.");
+                wrap: word-wrap;
+                style: MaterialTypography.body-medium;
+                color: MaterialPalette.on-surface-variant;
+            }
+
+            if root.constraint-selected >= 0 && root.constraint-leaf-type == "" : MaterialText {
+                text: @tr("Group node — no editable parameters.\nUse the tree to add or remove children.");
+                wrap: word-wrap;
+                style: MaterialTypography.body-medium;
+                color: MaterialPalette.on-surface-variant;
+            }
+
+            if root.constraint-selected >= 0 && root.constraint-leaf-type == "ActiveWindow" : VerticalLayout {
+                spacing: MaterialStyleMetrics.spacing_8;
+                TextField { label: @tr("Window title pattern"); text <=> root.c-aw-title; }
+                HorizontalLayout {
+                    spacing: MaterialStyleMetrics.spacing_8;
+                    VerticalLayout { alignment: center; Switch { checked <=> root.c-aw-regex; } }
+                    MaterialText { text: @tr("Use regex"); vertical-alignment: center; style: MaterialTypography.body-medium; color: MaterialPalette.on-surface; }
+                }
+            }
+
+            if root.constraint-selected >= 0 && root.constraint-leaf-type == "TimeRange" : HorizontalLayout {
+                spacing: MaterialStyleMetrics.spacing_8;
+                TextField { label: @tr("From (HH:MM)"); text <=> root.c-tr-from; horizontal-stretch: 1; }
+                TextField { label: @tr("To (HH:MM)"); text <=> root.c-tr-to; horizontal-stretch: 1; }
+            }
+
+            if root.constraint-selected >= 0 && root.constraint-leaf-type == "VarCompare" : VerticalLayout {
+                spacing: MaterialStyleMetrics.spacing_8;
+                TextField { label: @tr("Variable key"); text <=> root.c-vc-key; }
+                HorizontalLayout {
+                    spacing: MaterialStyleMetrics.spacing_8;
+                    DropDownMenu {
+                        label: @tr("Op");
+                        width: 120px;
+                        vertical-stretch: 0;
+                        items: root.cmp-op-items;
+                        current_index <=> root.c-vc-op-idx;
+                    }
+                    TextField { label: @tr("Compare value"); text <=> root.c-vc-value; horizontal-stretch: 1; }
+                }
+            }
+
+            if root.constraint-selected >= 0 && root.constraint-leaf-type == "Expression" : VerticalLayout {
+                spacing: MaterialStyleMetrics.spacing_4;
+                MaterialText { text: @tr("DSL expression"); style: MaterialTypography.label-medium; color: MaterialPalette.on-surface-variant; }
+                TextEdit {
+                    vertical-stretch: 1;
+                    min-height: 80px;
+                    text <=> root.c-expr-dsl;
+                    font-family: "monospace";
+                    wrap: word-wrap;
+                }
+            }
+
+            Rectangle { vertical-stretch: 1; }
+
+            HorizontalLayout {
+                spacing: MaterialStyleMetrics.spacing_8;
+                OutlineButton {
+                    text: @tr("Delete");
+                    enabled: root.constraint-selected >= 0;
+                    height: 40px;
+                    clicked => { root.constraint-delete-node(root.constraint-selected); }
+                }
+                Rectangle { horizontal-stretch: 1; }
+                TonalButton {
+                    text: @tr("Update");
+                    enabled: root.constraint-selected >= 0 && root.constraint-leaf-type != "";
+                    height: 40px;
+                    clicked => { root.constraint-update(); }
+                }
+            }
+        }
+
+        // ── Workflow editor ─────────────────────────────────────────────────
+        if root.editor-kind == 2 : VerticalLayout {
+            spacing: MaterialStyleMetrics.spacing_8;
+            vertical-stretch: 1;
+
+            if root.workflow-selected < 0 || root.workflow-action-type == "" : MaterialText {
+                text: root.workflow-selected < 0
+                    ? @tr("Select a workflow node to edit its properties.")
+                    : @tr("Container node — select an action node to edit parameters.");
+                wrap: word-wrap;
+                style: MaterialTypography.body-medium;
+                color: MaterialPalette.on-surface-variant;
+            }
+
+            if root.workflow-selected >= 0 && root.workflow-action-type == "Notify" : VerticalLayout {
+                spacing: MaterialStyleMetrics.spacing_8;
+                TextField { label: @tr("Title"); text <=> root.wf-notify-title; }
+                TextField { label: @tr("Body"); text <=> root.wf-notify-body; }
+            }
+
+            if root.workflow-selected >= 0 && root.workflow-action-type == "RunCommand" : VerticalLayout {
+                spacing: MaterialStyleMetrics.spacing_8;
+                TextField { label: @tr("Program"); text <=> root.wf-run-program; }
+                TextField { label: @tr("Arguments (space-separated)"); text <=> root.wf-run-args; }
+                HorizontalLayout {
+                    spacing: MaterialStyleMetrics.spacing_8;
+                    VerticalLayout { alignment: center; Switch { checked <=> root.wf-run-capture; } }
+                    MaterialText { text: @tr("Capture stdout"); vertical-alignment: center; style: MaterialTypography.body-medium; color: MaterialPalette.on-surface; }
+                }
+            }
+
+            if root.workflow-selected >= 0 && root.workflow-action-type == "RunScript" : VerticalLayout {
+                spacing: MaterialStyleMetrics.spacing_8;
+                DropDownMenu {
+                    label: @tr("Language");
+                    vertical-stretch: 0;
+                    items: root.lang-items;
+                    current_index <=> root.wf-script-lang-idx;
+                }
+                MaterialText { text: @tr("Script source"); style: MaterialTypography.label-medium; color: MaterialPalette.on-surface-variant; }
+                TextEdit {
+                    vertical-stretch: 1;
+                    min-height: 80px;
+                    text <=> root.wf-script-source;
+                    font-family: "monospace";
+                    wrap: word-wrap;
+                }
+            }
+
+            if root.workflow-selected >= 0 && root.workflow-action-type == "Delay" : TextField {
+                label: @tr("Delay (milliseconds)");
+                text <=> root.wf-delay-ms;
+            }
+
+            if root.workflow-selected >= 0 && root.workflow-action-type == "Interact" : VerticalLayout {
+                spacing: MaterialStyleMetrics.spacing_8;
+
+                HorizontalLayout {
+                    spacing: MaterialStyleMetrics.spacing_8;
+                    DropDownMenu {
+                        label: @tr("Target");
+                        horizontal-stretch: 1;
+                        vertical-stretch: 0;
+                        items: root.target-items;
+                        current_index <=> root.target-type-idx;
+                    }
+                    DropDownMenu {
+                        label: @tr("On no BG");
+                        width: 120px;
+                        vertical-stretch: 0;
+                        items: root.nobg-items;
+                        current_index <=> root.on-no-bg-idx;
+                    }
+                }
+
+                if root.target-type-idx != 0 : TextField {
+                    label: @tr("Target pattern");
+                    text <=> root.target-pattern;
+                }
+
+                MaterialText { text: @tr("Operation (JSON)"); style: MaterialTypography.label-medium; color: MaterialPalette.on-surface-variant; }
+                TextEdit {
+                    vertical-stretch: 1;
+                    min-height: 80px;
+                    text <=> root.workflow-edit-json;
+                    font-family: "monospace";
+                    wrap: word-wrap;
+                }
+            }
+
+            // Fallback for unhandled action types
+            if root.workflow-selected >= 0
+                && root.workflow-action-type != ""
+                && root.workflow-action-type != "Notify"
+                && root.workflow-action-type != "RunCommand"
+                && root.workflow-action-type != "RunScript"
+                && root.workflow-action-type != "Delay"
+                && root.workflow-action-type != "Interact" : VerticalLayout {
+                spacing: MaterialStyleMetrics.spacing_4;
+                MaterialText {
+                    text: @tr("Params (JSON)");
+                    style: MaterialTypography.label-medium;
+                    color: MaterialPalette.on-surface-variant;
+                }
+                TextEdit {
+                    vertical-stretch: 1;
+                    min-height: 80px;
+                    text <=> root.workflow-edit-json;
+                    font-family: "monospace";
+                    wrap: word-wrap;
+                }
+            }
+
+            Rectangle { vertical-stretch: 1; }
+
+            HorizontalLayout {
+                spacing: MaterialStyleMetrics.spacing_8;
+                OutlineButton {
+                    text: @tr("Delete");
+                    enabled: root.workflow-selected >= 0;
+                    height: 40px;
+                    clicked => { root.workflow-delete-node(root.workflow-selected); }
+                }
+                Rectangle { horizontal-stretch: 1; }
+                TonalButton {
+                    text: @tr("Update");
+                    enabled: root.workflow-selected >= 0 && root.workflow-action-type != "";
+                    height: 40px;
+                    clicked => { root.workflow-update(); }
+                }
+            }
+        }
+    }
+}

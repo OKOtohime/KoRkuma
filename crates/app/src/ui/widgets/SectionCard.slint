@@ -1,0 +1,29 @@
+import { MaterialText, MaterialTypography, MaterialPalette, MaterialStyleMetrics } from "@material";
+
+// A titled outlined card used to group a section of controls. Unlike Material's
+// OutlinedCard (which always hugs its content), this is built on a plain
+// Rectangle so it fills whatever geometry its parent layout assigns — letting the
+// section stretch to fill the available editor area.
+export component SectionCard {
+    in property <string> title;
+
+    Rectangle {
+        background: MaterialPalette.surface-container-low;
+        border-radius: MaterialStyleMetrics.border_radius_12;
+        border-width: 1px;
+        border-color: MaterialPalette.outline;
+
+        VerticalLayout {
+            padding: MaterialStyleMetrics.padding_16;
+            spacing: MaterialStyleMetrics.spacing_12;
+
+            if root.title != "" : MaterialText {
+                text: root.title;
+                style: MaterialTypography.title_small;
+                color: MaterialPalette.on-surface;
+            }
+
+            @children
+        }
+    }
+}

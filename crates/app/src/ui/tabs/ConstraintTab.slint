@@ -1,0 +1,122 @@
+import { TonalButton, OutlineButton, IconButton, ListView, MaterialText, MaterialTypography, MaterialPalette, MaterialStyleMetrics } from "@material";
+import { Icons } from "@material-icon";
+import { AppIcons } from "../icons.slint";
+import { SectionCard } from "../widgets/SectionCard.slint";
+import { DropMenu } from "../widgets/DropMenu.slint";
+import { ConstraintRow } from "../models.slint";
+
+// Constraint tree (display + add only). "Add" inserts a leaf of the chosen kind;
+// "Wrap" wraps the currently selected node in an AND/OR/NOT group. Node type and
+// properties are edited in the RightPanel.
+export component ConstraintTab {
+    in property <[ConstraintRow]> rows;
+    in-out property <int> selected;
+
+    callback node-selected(int);
+    callback add-leaf(string);
+    callback wrap(string);
+    callback move-up(int);
+    callback move-down(int);
+
+    SectionCard {
+        preferred-width: 100%;
+        preferred-height: 100%;
+        title: @tr("Condition tree");
+
+        HorizontalLayout {
+            alignment: start;
+            spacing: MaterialStyleMetrics.spacing_8;
+
+            add-btn := TonalButton {
+                text: @tr("Add  ▼");
+                icon: AppIcons.add;
+                height: 34px;
+                clicked => { add-menu.show(); }
+            }
+
+            wrap-btn := OutlineButton {
+                text: @tr("Wrap  ▼");
+                height: 34px;
+                enabled: root.selected >= 0;
+                clicked => { wrap-menu.show(); }
+            }
+
+            add-menu := DropMenu {
+                x: add-btn.x;
+                y: add-btn.y + add-btn.height + 2px;
+                items: [
+                    { label: @tr("Window Focus"), value: "ActiveWindow" },
+                    { label: @tr("Time Range"), value: "TimeRange" },
+                    { label: @tr("Variable Compare"), value: "VarCompare" },
+                    { label: @tr("Expression"), value: "Expression" },
+                ];
+                chosen(v) => { root.add-leaf(v); }
+            }
+
+            wrap-menu := DropMenu {
+                x: wrap-btn.x;
+                y: wrap-btn.y + wrap-btn.height + 2px;
+                items: [
+                    { label: @tr("AND"), value: "And" },
+                    { label: @tr("OR"), value: "Or" },
+                    { label: @tr("NOT"), value: "Not" },
+                ];
+                chosen(v) => { root.wrap(v); }
+            }
+        }
+
+        ListView {
+            vertical-stretch: 1;
+            min-height: 160px;
+
+            for row[i] in root.rows : Rectangle {
+                height: 38px;
+                background: i == root.selected ? MaterialPalette.secondary-container : transparent;
+                border-radius: MaterialStyleMetrics.border_radius_8;
+
+                TouchArea {
+                    mouse-cursor: pointer;
+                    clicked => {
+                        root.selected = i;
+                        root.node-selected(i);
+                    }
+                }
+
+                HorizontalLayout {
+                    padding-left: MaterialStyleMetrics.padding_8;
+                    padding-right: MaterialStyleMetrics.padding_4;
+
+                    Rectangle { width: row.depth * 16px; }
+
+                    MaterialText {
+                        width: 22px;
+                        vertical-alignment: center;
+                        horizontal-alignment: center;
+                        text: row.kind == "All" ? "⊓"
+                            : row.kind == "Any" ? "⊔"
+                            : row.kind == "Not" ? "¬"
+                            : row.kind == "Leaf" ? "◆"
+                            : "◇";
+                        style: MaterialTypography.title-small;
+                        color: row.kind == "All" ? MaterialPalette.primary
+                            : row.kind == "Any" ? MaterialPalette.tertiary
+                            : row.kind == "Not" ? MaterialPalette.error
+                            : MaterialPalette.secondary;
+                    }
+
+                    MaterialText {
+                        text: row.summary;
+                        horizontal-stretch: 1;
+                        overflow: elide;
+                        vertical-alignment: center;
+                        style: MaterialTypography.body-medium;
+                        color: MaterialPalette.on-surface;
+                    }
+
+                    IconButton { icon: Icons.arrow-drop-up; inline: true; clicked => { root.move-up(i); } }
+                    IconButton { icon: Icons.arrow-drop-down; inline: true; clicked => { root.move-down(i); } }
+                }
+            }
+        }
+    }
+}

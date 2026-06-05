@@ -2,6 +2,32 @@ use korkuma_core::domain::{KeyCombo, ProcessEvent, TriggerConfig};
 
 use crate::{MainWindow, TriggerRow};
 
+// Ordered key list mirroring PropertyInspector.slint's hotkey key DropDownMenu.
+// Index 0 is "no key", indices 1-26 are A-Z, 27-38 are F1-F12, 39-48 are 0-9, then specials.
+pub const HOTKEY_KEYS: &[&str] = &[
+    "", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
+    "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
+    "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12",
+    "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+    "Space", "Enter", "Tab", "Escape", "Delete", "Backspace", "Insert",
+    "Home", "End", "PageUp", "PageDown", "Left", "Right", "Up", "Down",
+];
+
+// Ordered modifier list (index 0 = None).
+pub const HOTKEY_MODS: &[&str] = &["None", "Ctrl", "Alt", "Shift", "Win", "Meta"];
+
+// Cron expressions for schedule presets (index 7 = custom).
+pub const CRON_PRESETS: &[&str] = &[
+    "* * * * *",    // 0 every minute
+    "0 * * * *",    // 1 every hour
+    "0 0 * * *",    // 2 every day
+    "0 0 * * 1-5",  // 3 weekdays
+    "0 0 * * 0",    // 4 every week
+    "0 0 1 * *",    // 5 every month
+    "0 0 1 1 *",    // 6 every year
+    "",             // 7 custom (use trigger-cron directly)
+];
+
 pub fn format_hotkey(keys: &[KeyCombo]) -> String {
     if keys.is_empty() {
         return "—".into();
@@ -14,20 +40,6 @@ pub fn format_hotkey(keys: &[KeyCombo]) -> String {
         })
         .collect::<Vec<_>>()
         .join(", ")
-}
-
-pub fn parse_hotkey_str(s: &str) -> Vec<KeyCombo> {
-    let s = s.trim();
-    if s.is_empty() {
-        return vec![];
-    }
-    let parts: Vec<&str> = s.split('+').map(str::trim).collect();
-    let key = parts.last().unwrap_or(&s).to_string();
-    let modifiers: Vec<String> = parts[..parts.len().saturating_sub(1)]
-        .iter()
-        .map(|&m| m.to_string())
-        .collect();
-    vec![KeyCombo { modifiers, key }]
 }
 
 pub fn describe_trigger(t: &TriggerConfig) -> (String, String) {
@@ -96,10 +108,28 @@ pub fn populate_trigger_fields(ui: &MainWindow, trigger: &TriggerConfig) {
         TriggerConfig::Schedule { cron } => {
             ui.set_trigger_kind("Schedule".into());
             ui.set_trigger_cron(cron.clone().into());
+            let preset_idx = CRON_PRESETS[..7]
+                .iter()
+                .position(|&p| p == cron.as_str())
+                .unwrap_or(7) as i32;
+            ui.set_trigger_cron_preset_idx(preset_idx);
         }
         TriggerConfig::Hotkey { keys } => {
             ui.set_trigger_kind("Hotkey".into());
-            ui.set_trigger_hotkey(format_hotkey(keys).into());
+            if let Some(combo) = keys.first() {
+                let mod1 = combo.modifiers.first().map(String::as_str).unwrap_or("None");
+                let mod2 = combo.modifiers.get(1).map(String::as_str).unwrap_or("None");
+                let mod1_idx = HOTKEY_MODS.iter().position(|&m| m == mod1).unwrap_or(0) as i32;
+                let mod2_idx = HOTKEY_MODS.iter().position(|&m| m == mod2).unwrap_or(0) as i32;
+                let key_idx = HOTKEY_KEYS.iter().position(|&k| k == combo.key.as_str()).unwrap_or(0) as i32;
+                ui.set_trigger_hotkey_mod1_idx(mod1_idx);
+                ui.set_trigger_hotkey_mod2_idx(mod2_idx);
+                ui.set_trigger_hotkey_key_idx(key_idx);
+            } else {
+                ui.set_trigger_hotkey_mod1_idx(0);
+                ui.set_trigger_hotkey_mod2_idx(0);
+                ui.set_trigger_hotkey_key_idx(0);
+            }
         }
         TriggerConfig::WindowFocus { title_pattern, regex } => {
             ui.set_trigger_kind("WindowFocus".into());
@@ -109,13 +139,10 @@ pub fn populate_trigger_fields(ui: &MainWindow, trigger: &TriggerConfig) {
         TriggerConfig::Process { name, event } => {
             ui.set_trigger_kind("Process".into());
             ui.set_trigger_proc_name(name.clone().into());
-            ui.set_trigger_proc_event(
-                match event {
-                    ProcessEvent::Started => "Started",
-                    ProcessEvent::Stopped => "Stopped",
-                }
-                .into(),
-            );
+            ui.set_trigger_proc_event_idx(match event {
+                ProcessEvent::Started => 0,
+                ProcessEvent::Stopped => 1,
+            });
         }
         TriggerConfig::FileChange { path, .. } => {
             ui.set_trigger_kind("FileChange".into());
@@ -130,17 +157,43 @@ pub fn populate_trigger_fields(ui: &MainWindow, trigger: &TriggerConfig) {
 
 pub fn build_trigger_from_ui(ui: &MainWindow, kind: &str) -> TriggerConfig {
     match kind {
-        "Schedule" => TriggerConfig::Schedule { cron: ui.get_trigger_cron().to_string() },
-        "Hotkey" => TriggerConfig::Hotkey {
-            keys: parse_hotkey_str(ui.get_trigger_hotkey().as_str()),
-        },
+        "Schedule" => {
+            let preset_idx = ui.get_trigger_cron_preset_idx() as usize;
+            let cron = if preset_idx < 7 {
+                CRON_PRESETS[preset_idx].to_string()
+            } else {
+                ui.get_trigger_cron().to_string()
+            };
+            TriggerConfig::Schedule { cron }
+        }
+        "Hotkey" => {
+            let mod1_idx = ui.get_trigger_hotkey_mod1_idx() as usize;
+            let mod2_idx = ui.get_trigger_hotkey_mod2_idx() as usize;
+            let key_idx = ui.get_trigger_hotkey_key_idx() as usize;
+            let key = HOTKEY_KEYS.get(key_idx).map(|&k| k.to_string()).unwrap_or_default();
+            if key.is_empty() {
+                return TriggerConfig::Hotkey { keys: vec![] };
+            }
+            let mut mods: Vec<String> = vec![];
+            if mod1_idx != 0 {
+                mods.push(HOTKEY_MODS[mod1_idx].to_string());
+            }
+            // deduplicate: only add mod2 if different from mod1
+            if mod2_idx != 0 {
+                let mod2_str = HOTKEY_MODS[mod2_idx].to_string();
+                if !mods.contains(&mod2_str) {
+                    mods.push(mod2_str);
+                }
+            }
+            TriggerConfig::Hotkey { keys: vec![KeyCombo { modifiers: mods, key }] }
+        }
         "WindowFocus" => TriggerConfig::WindowFocus {
             title_pattern: ui.get_trigger_title_pat().to_string(),
             regex: ui.get_trigger_use_regex(),
         },
         "Process" => TriggerConfig::Process {
             name: ui.get_trigger_proc_name().to_string(),
-            event: if ui.get_trigger_proc_event().as_str() == "Stopped" {
+            event: if ui.get_trigger_proc_event_idx() == 1 {
                 ProcessEvent::Stopped
             } else {
                 ProcessEvent::Started

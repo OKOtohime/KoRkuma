@@ -1,0 +1,14 @@
+import { LogPanel } from "LogPanel.slint";
+import { LogEntry } from "../models.slint";
+
+// Errors tab — warnings and errors only.
+export component ErrorPanel {
+    in property <[LogEntry]> logs;
+
+    LogPanel {
+        width: 100%;
+        height: 100%;
+        logs: root.logs;
+        category: "problem";
+    }
+}

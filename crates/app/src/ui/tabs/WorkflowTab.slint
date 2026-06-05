@@ -1,0 +1,142 @@
+import { TonalButton, IconButton, ListView, MaterialText, MaterialTypography, MaterialPalette, MaterialStyleMetrics } from "@material";
+import { Icons } from "@material-icon";
+import { AppIcons } from "../icons.slint";
+import { SectionCard } from "../widgets/SectionCard.slint";
+import { DropMenu } from "../widgets/DropMenu.slint";
+import { WorkflowRow } from "../models.slint";
+
+// Workflow tree (display + add only). "Add Action" inserts an action of the
+// chosen kind; "Add Control" inserts a control-flow node (If / Parallel). Node
+// type and properties are edited in the RightPanel.
+export component WorkflowTab {
+    in property <[WorkflowRow]> rows;
+    in-out property <int> selected;
+
+    callback node-selected(int);
+    callback add-action(string);
+    callback add-if();
+    callback add-parallel();
+    callback move-up(int);
+    callback move-down(int);
+
+    SectionCard {
+        preferred-width: 100%;
+        preferred-height: 100%;
+        title: @tr("Workflow tree");
+
+        HorizontalLayout {
+            alignment: start;
+            spacing: MaterialStyleMetrics.spacing_8;
+
+            action-btn := TonalButton {
+                text: @tr("Add Action  ▼");
+                icon: AppIcons.add;
+                height: 34px;
+                clicked => { action-menu.show(); }
+            }
+
+            control-btn := TonalButton {
+                text: @tr("Add Control  ▼");
+                icon: AppIcons.add;
+                height: 34px;
+                clicked => { control-menu.show(); }
+            }
+
+            action-menu := DropMenu {
+                x: action-btn.x;
+                y: action-btn.y + action-btn.height + 2px;
+                items: [
+                    { label: @tr("Notify"), value: "Notify" },
+                    { label: @tr("Run Command"), value: "RunCommand" },
+                    { label: @tr("Delay"), value: "Delay" },
+                    { label: @tr("Run Script"), value: "RunScript" },
+                    { label: @tr("Interact"), value: "Interact" },
+                ];
+                chosen(v) => { root.add-action(v); }
+            }
+
+            control-menu := DropMenu {
+                x: control-btn.x;
+                y: control-btn.y + control-btn.height + 2px;
+                items: [
+                    { label: @tr("If / Else"), value: "If" },
+                    { label: @tr("Parallel"), value: "Parallel" },
+                ];
+                chosen(v) => {
+                    if v == "Parallel" {
+                        root.add-parallel();
+                    } else {
+                        root.add-if();
+                    }
+                }
+            }
+        }
+
+        ListView {
+            vertical-stretch: 1;
+            min-height: 150px;
+
+            for row[i] in root.rows : Rectangle {
+                height: 38px;
+                background: i == root.selected ? MaterialPalette.secondary-container : transparent;
+                border-radius: MaterialStyleMetrics.border_radius_8;
+
+                TouchArea {
+                    mouse-cursor: pointer;
+                    clicked => {
+                        root.selected = i;
+                        root.node-selected(i);
+                    }
+                }
+
+                HorizontalLayout {
+                    padding-left: MaterialStyleMetrics.padding_8;
+                    padding-right: MaterialStyleMetrics.padding_4;
+
+                    Rectangle { width: row.depth * 16px; }
+
+                    MaterialText {
+                        width: 22px;
+                        vertical-alignment: center;
+                        horizontal-alignment: center;
+                        text: row.kind == "Action" ? "▣"
+                            : row.kind == "Seq" ? "↓"
+                            : row.kind == "Parallel" ? "⇉"
+                            : row.kind == "If" ? "?"
+                            : row.kind == "While" ? "↺"
+                            : row.kind == "Then" ? "▷"
+                            : row.kind == "Else" ? "▶"
+                            : "○";
+                        style: MaterialTypography.title-small;
+                        color: row.kind == "Action" ? MaterialPalette.primary
+                            : row.kind == "If" ? MaterialPalette.tertiary
+                            : row.kind == "Parallel" ? MaterialPalette.secondary
+                            : MaterialPalette.on-surface-variant;
+                    }
+
+                    MaterialText {
+                        text: row.summary;
+                        horizontal-stretch: 1;
+                        overflow: elide;
+                        vertical-alignment: center;
+                        style: MaterialTypography.body-medium;
+                        color: MaterialPalette.on-surface;
+                    }
+
+                    IconButton {
+                        icon: Icons.arrow-drop-up;
+                        inline: true;
+                        enabled: row.kind != "Then" && row.kind != "Else";
+                        clicked => { root.move-up(i); }
+                    }
+                    IconButton {
+                        icon: Icons.arrow-drop-down;
+                        inline: true;
+                        enabled: row.kind != "Then" && row.kind != "Else";
+                        clicked => { root.move-down(i); }
+                    }
+                }
+            }
+        }
+    }
+}

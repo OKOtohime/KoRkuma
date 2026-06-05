@@ -1,0 +1,31 @@
+import { StandardTableView } from "std-widgets.slint";
+import { LogEntry } from "../models.slint";
+
+// Rust registers LogTableAdapter.on_convert to filter + convert [LogEntry] to
+// [[StandardListViewItem]] for the given category ("all" | "event" | "problem").
+// `version` is incremented by Rust on every log push so the pure-callback
+// binding re-evaluates (model-content changes don't trigger it otherwise).
+export global LogTableAdapter {
+    in-out property <int> version: 0;
+    pure callback convert([LogEntry], string, int) -> [[StandardListViewItem]];
+    convert(entries, category, _version) => {
+        return [];
+    }
+}
+
+export component LogPanel {
+    in property <[LogEntry]> logs;
+    in property <string> category: "all";
+
+    VerticalLayout {
+        StandardTableView {
+            vertical-stretch: 1;
+            columns: [
+                { title: @tr("Level"), min-width: 80px },
+                { title: @tr("Source"), min-width: 110px },
+                { title: @tr("Message"), horizontal-stretch: 1 },
+            ];
+            rows: LogTableAdapter.convert(root.logs, root.category, LogTableAdapter.version);
+        }
+    }
+}

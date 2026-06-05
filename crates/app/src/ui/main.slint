@@ -1,0 +1,429 @@
+import {
+    MaterialWindow,
+    TabBar,
+    FilledButton,
+    TonalButton,
+    OutlineButton,
+    TextField,
+    VerticalDivider,
+    HorizontalDivider,
+    MaterialText,
+    MaterialTypography,
+    MaterialPalette,
+    MaterialStyleMetrics,
+} from "@material";
+import { AppIcons } from "icons.slint";
+import {
+    MacroItem,
+    LogEntry,
+    TriggerRow,
+    ConstraintRow,
+    WorkflowRow,
+    PermissionRow,
+    VarRow,
+} from "models.slint";
+import { AppNavigationRail } from "navigation/AppNavigationRail.slint";
+import { MacroSidebar } from "panels/MacroSidebar.slint";
+import { RightPanel } from "panels/RightPanel.slint";
+import { BottomDrawer } from "panels/BottomDrawer.slint";
+import { TriggerTab } from "tabs/TriggerTab.slint";
+import { ConstraintTab } from "tabs/ConstraintTab.slint";
+import { WorkflowTab } from "tabs/WorkflowTab.slint";
+import { SettingsPage } from "pages/SettingsPage.slint";
+import { AboutPage } from "pages/AboutPage.slint";
+import {
+    PermissionApprovalDialog,
+} from "dialogs/PermissionApprovalDialog.slint";
+import { RunSessionController } from "components/RunSessionController.slint";
+
+import { LogTableAdapter } from "panels/LogPanel.slint";
+
+// Re-export the shared structs and globals so the generated Rust bindings expose them.
+export { MacroItem, LogEntry, TriggerRow, ConstraintRow, WorkflowRow, PermissionRow, VarRow }
+export { LogTableAdapter }
+
+export component MainWindow inherits MaterialWindow {
+    width: 1320px;
+    height: 800px;
+    title: @tr("KoRkuma");
+    icon: @image-url("assets/logo.png");
+
+    // ── Model properties (Rust↔Slint contract) ─────────────────────────────
+    in property <[MacroItem]> macros;
+    in-out property <int> selected-index: -1;
+    in property <[LogEntry]> logs;
+
+    in-out property <string> macro-name: "";
+
+    in property <[TriggerRow]> trigger-rows;
+    in-out property <int> trigger-selected: -1;
+    in-out property <string> trigger-kind: "Manual";
+    // Schedule preset index: 0=minute 1=hour 2=day 3=weekday 4=week 5=month 6=year 7=custom
+    in-out property <int> trigger-cron-preset-idx: 7;
+    in-out property <string> trigger-cron: "* * * * *";
+    in-out property <string> trigger-title-pat: "";
+    in-out property <bool> trigger-use-regex: false;
+    in-out property <string> trigger-proc-name: "";
+    // Process event index: 0=Started 1=Stopped
+    in-out property <int> trigger-proc-event-idx: 0;
+    // Hotkey part indices: mod (0=None 1=Ctrl 2=Alt 3=Shift 4=Win 5=Meta), key (0=none 1=A…)
+    in-out property <int> trigger-hotkey-mod1-idx: 0;
+    in-out property <int> trigger-hotkey-mod2-idx: 0;
+    in-out property <int> trigger-hotkey-key-idx: 0;
+
+    in property <[ConstraintRow]> constraint-rows;
+    in-out property <int> constraint-selected: -1;
+    in-out property <string> constraint-edit-json: "";
+    in-out property <string> constraint-leaf-type: "";
+    in-out property <string> c-aw-title: "";
+    in-out property <bool> c-aw-regex: false;
+    in-out property <string> c-tr-from: "09:00";
+    in-out property <string> c-tr-to: "18:00";
+    in-out property <string> c-vc-key: "";
+    // VarCompare op index: 0=Eq 1=Ne 2=Lt 3=Gt 4=Le 5=Ge
+    in-out property <int> c-vc-op-idx: 0;
+    in-out property <string> c-vc-value: "";
+    in-out property <string> c-expr-dsl: "";
+
+    in property <[WorkflowRow]> workflow-rows;
+    in-out property <int> workflow-selected: -1;
+    in-out property <string> workflow-edit-json: "";
+    in-out property <string> workflow-action-type: "";
+    in-out property <string> wf-notify-title: "";
+    in-out property <string> wf-notify-body: "";
+    in-out property <string> wf-run-program: "";
+    in-out property <string> wf-run-args: "";
+    in-out property <bool> wf-run-capture: false;
+    // RunScript lang index: 0=Rhai
+    in-out property <int> wf-script-lang-idx: 0;
+    in-out property <string> wf-script-source: "";
+    in-out property <string> wf-delay-ms: "1000";
+    // Interact target index: 0=Foreground 1=Window 2=Process 3=BrowserTab
+    in-out property <int> target-type-idx: 0;
+    in-out property <string> target-pattern: "";
+    // On-no-bg index: 0=Degrade 1=Fail 2=Queue
+    in-out property <int> on-no-bg-idx: 0;
+
+    in property <[PermissionRow]> permission-rows;
+    in property <[VarRow]> var-rows;
+    in-out property <string> var-filter: "";
+
+    in-out property <bool> show-permission-dialog: false;
+    in property <[string]> pending-permissions;
+
+    // ── Internal navigation state ───────────────────────────────────────────
+    property <int> current-page: 0;    // 0 Macros · 1 Settings · 2 About
+    property <int> macro-tab: 0;        // 0 Trigger · 1 Constraint · 2 Workflow
+    property <int> inspector-tab: 0;    // 0 Properties · 1 Variables · 2 Permissions
+
+    // ── Callbacks (Rust↔Slint contract) ─────────────────────────────────────
+    callback add-macro();
+    callback delete-macro(int);
+    callback toggle-enabled(int, bool);
+    callback trigger-macro(int);
+    callback dry-run-macro(int);
+    callback macro-selected(int);
+    callback rename-macro(int, string);
+    callback move-macro-up(int);
+    callback move-macro-down(int);
+
+    callback trigger-select(int);
+    callback trigger-add(string);
+    callback trigger-delete(int);
+    callback trigger-apply();
+
+    callback constraint-node-selected(int);
+    callback constraint-update-node(int, string);  // legacy; use constraint-update()
+    callback constraint-update();
+    callback constraint-delete-node(int);
+    callback constraint-add-leaf(string);
+    callback constraint-wrap(string);
+    callback constraint-move-up(int);
+    callback constraint-move-down(int);
+
+    callback workflow-node-selected(int);
+    callback workflow-update-node(int, string);  // legacy; use workflow-update()
+    callback workflow-update();
+    callback workflow-delete-node(int);
+    callback workflow-add-action(string);
+    callback workflow-add-if();
+    callback workflow-add-parallel();
+    callback workflow-move-up(int);
+    callback workflow-move-down(int);
+
+    callback request-save();
+    callback approve-permissions();
+    callback cancel-permissions();
+    callback revoke-permission(int);
+
+    VerticalLayout {
+        spacing: 0px;
+
+        // ── Rail + main area ────────────────────────────────────────────────
+        HorizontalLayout {
+            vertical-stretch: 1;
+            spacing: 0px;
+
+            AppNavigationRail {
+                current-page <=> root.current-page;
+            }
+
+            VerticalDivider { }
+
+            VerticalLayout {
+                horizontal-stretch: 1;
+                spacing: 0px;
+
+                // Page area
+                VerticalLayout {
+                    vertical-stretch: 1;
+
+                    // 0 — Macros (sidebar | editor | inspector)
+                    if root.current-page == 0: HorizontalLayout {
+                        spacing: 0px;
+
+                        MacroSidebar {
+                            width: 220px;
+                            macros: root.macros;
+                            selected-index <=> root.selected-index;
+                            macro-selected(i) => {
+                                root.macro-selected(i);
+                            }
+                            toggle-enabled(i, e) => {
+                                root.toggle-enabled(i, e);
+                            }
+                            add-macro() => {
+                                root.add-macro();
+                            }
+                        }
+
+                        VerticalDivider { }
+
+                        // Editor (tree tabs)
+                        VerticalLayout {
+                            horizontal-stretch: 1;
+
+                            if root.selected-index < 0: Rectangle {
+                                MaterialText {
+                                    text: @tr("Select or add a macro to begin.");
+                                    style: MaterialTypography.body-large;
+                                    color: MaterialPalette.on-surface-variant;
+                                }
+                            }
+
+                            if root.selected-index >= 0: VerticalLayout {
+                                HorizontalLayout {
+                                    padding: MaterialStyleMetrics.padding_12;
+                                    spacing: MaterialStyleMetrics.spacing_8;
+
+                                    TextField {
+                                        label: @tr("Macro name");
+                                        text <=> root.macro-name;
+                                        horizontal-stretch: 1;
+                                        accepted(t) => {
+                                            root.rename-macro(root.selected-index, t);
+                                        }
+                                    }
+
+                                    FilledButton {
+                                        text: @tr("Save");
+                                        icon: AppIcons.save;
+                                        height: 40px;
+                                        clicked => {
+                                            root.request-save();
+                                        }
+                                    }
+
+                                    TonalButton {
+                                        text: @tr("Run");
+                                        icon: AppIcons.play;
+                                        height: 40px;
+                                        clicked => {
+                                            RunSessionController.start-session();
+                                            root.trigger-macro(root.selected-index);
+                                        }
+                                    }
+
+                                    OutlineButton {
+                                        text: @tr("Dry Run");
+                                        icon: AppIcons.flask;
+                                        height: 40px;
+                                        clicked => {
+                                            RunSessionController.start-session();
+                                            root.dry-run-macro(root.selected-index);
+                                        }
+                                    }
+
+                                    OutlineButton {
+                                        text: @tr("Delete");
+                                        icon: AppIcons.delete;
+                                        height: 40px;
+                                        clicked => {
+                                            root.delete-macro(root.selected-index);
+                                        }
+                                    }
+                                }
+
+                                TabBar {
+                                    current-index <=> root.macro-tab;
+                                    items: [
+                                        { text: @tr("Trigger") },
+                                        { text: @tr("Constraint") },
+                                        { text: @tr("Workflow") },
+                                    ];
+                                }
+
+                                // Editor body below the tab bar. Layouts stretch
+                                // their children by default; each tab declares
+                                // preferred-width/height: 100% so it fills this area.
+                                VerticalLayout {
+                                    vertical-stretch: 1;
+                                    padding: MaterialStyleMetrics.padding_16;
+
+                                    if root.macro-tab == 0: TriggerTab {
+                                        rows: root.trigger-rows;
+                                        selected <=> root.trigger-selected;
+                                        select(i) => {
+                                            root.inspector-tab = 0;
+                                            root.trigger-select(i);
+                                        }
+                                        add(k) => {
+                                            root.trigger-add(k);
+                                        }
+                                    }
+
+                                    if root.macro-tab == 1: ConstraintTab {
+                                        rows: root.constraint-rows;
+                                        selected <=> root.constraint-selected;
+                                        node-selected(i) => {
+                                            root.inspector-tab = 0;
+                                            root.constraint-node-selected(i);
+                                        }
+                                        add-leaf(t) => {
+                                            root.constraint-add-leaf(t);
+                                        }
+                                        wrap(k) => {
+                                            root.constraint-wrap(k);
+                                        }
+                                        move-up(i) => {
+                                            root.constraint-move-up(i);
+                                        }
+                                        move-down(i) => {
+                                            root.constraint-move-down(i);
+                                        }
+                                    }
+
+                                    if root.macro-tab == 2: WorkflowTab {
+                                        rows: root.workflow-rows;
+                                        selected <=> root.workflow-selected;
+                                        node-selected(i) => {
+                                            root.inspector-tab = 0;
+                                            root.workflow-node-selected(i);
+                                        }
+                                        add-action(t) => {
+                                            root.workflow-add-action(t);
+                                        }
+                                        add-if() => {
+                                            root.workflow-add-if();
+                                        }
+                                        add-parallel() => {
+                                            root.workflow-add-parallel();
+                                        }
+                                        move-up(i) => {
+                                            root.workflow-move-up(i);
+                                        }
+                                        move-down(i) => {
+                                            root.workflow-move-down(i);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        VerticalDivider { }
+
+                        // Right inspector
+                        RightPanel {
+                            width: 340px;
+                            editor-kind: root.macro-tab;
+                            inspector-tab <=> root.inspector-tab;
+
+                            trigger-selected <=> root.trigger-selected;
+                            trigger-kind <=> root.trigger-kind;
+                            trigger-cron-preset-idx <=> root.trigger-cron-preset-idx;
+                            trigger-cron <=> root.trigger-cron;
+                            trigger-title-pat <=> root.trigger-title-pat;
+                            trigger-use-regex <=> root.trigger-use-regex;
+                            trigger-proc-name <=> root.trigger-proc-name;
+                            trigger-proc-event-idx <=> root.trigger-proc-event-idx;
+                            trigger-hotkey-mod1-idx <=> root.trigger-hotkey-mod1-idx;
+                            trigger-hotkey-mod2-idx <=> root.trigger-hotkey-mod2-idx;
+                            trigger-hotkey-key-idx <=> root.trigger-hotkey-key-idx;
+                            trigger-apply() => { root.trigger-apply(); }
+                            trigger-delete(i) => { root.trigger-delete(i); }
+
+                            constraint-selected <=> root.constraint-selected;
+                            constraint-leaf-type <=> root.constraint-leaf-type;
+                            c-aw-title <=> root.c-aw-title;
+                            c-aw-regex <=> root.c-aw-regex;
+                            c-tr-from <=> root.c-tr-from;
+                            c-tr-to <=> root.c-tr-to;
+                            c-vc-key <=> root.c-vc-key;
+                            c-vc-op-idx <=> root.c-vc-op-idx;
+                            c-vc-value <=> root.c-vc-value;
+                            c-expr-dsl <=> root.c-expr-dsl;
+                            constraint-update() => { root.constraint-update(); }
+                            constraint-delete-node(i) => { root.constraint-delete-node(i); }
+
+                            workflow-selected <=> root.workflow-selected;
+                            workflow-action-type <=> root.workflow-action-type;
+                            wf-notify-title <=> root.wf-notify-title;
+                            wf-notify-body <=> root.wf-notify-body;
+                            wf-run-program <=> root.wf-run-program;
+                            wf-run-args <=> root.wf-run-args;
+                            wf-run-capture <=> root.wf-run-capture;
+                            wf-script-lang-idx <=> root.wf-script-lang-idx;
+                            wf-script-source <=> root.wf-script-source;
+                            wf-delay-ms <=> root.wf-delay-ms;
+                            target-type-idx <=> root.target-type-idx;
+                            target-pattern <=> root.target-pattern;
+                            on-no-bg-idx <=> root.on-no-bg-idx;
+                            workflow-edit-json <=> root.workflow-edit-json;
+                            workflow-update() => { root.workflow-update(); }
+                            workflow-delete-node(i) => { root.workflow-delete-node(i); }
+
+                            vars: root.var-rows;
+                            var-filter <=> root.var-filter;
+                            permission-rows: root.permission-rows;
+                            selected-index: root.selected-index;
+                        }
+                    }
+
+                    // 1 — Settings
+                    if root.current-page == 1: SettingsPage { }
+
+                    // 2 — About
+                    if root.current-page == 2: AboutPage { }
+                }
+
+                HorizontalDivider { }
+
+                // Global bottom drawer (Logs / Events / Errors)
+                BottomDrawer {
+                    logs: root.logs;
+                }
+            }
+        }
+    }
+
+    // ── Save-time permission approval dialog (overlay) ──────────────────────
+    if root.show-permission-dialog: PermissionApprovalDialog {
+        permissions: root.pending-permissions;
+        approve() => {
+            root.approve-permissions();
+        }
+        cancel() => {
+            root.cancel-permissions();
+        }
+    }
+}

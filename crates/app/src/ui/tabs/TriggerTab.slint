@@ -1,0 +1,94 @@
+import { TonalButton, ListView, MaterialText, MaterialTypography, MaterialPalette, MaterialStyleMetrics } from "@material";
+import { AppIcons } from "../icons.slint";
+import { SectionCard } from "../widgets/SectionCard.slint";
+import { DropMenu } from "../widgets/DropMenu.slint";
+import { TriggerRow } from "../models.slint";
+
+// Trigger list (display + add only). A single "Add Trigger" button opens a
+// dropdown to pick the kind of the new trigger; its type and properties are
+// edited afterwards in the RightPanel.
+export component TriggerTab {
+    in property <[TriggerRow]> rows;
+    in-out property <int> selected;
+
+    callback select(int);
+    callback add(string);
+
+    SectionCard {
+        preferred-width: 100%;
+        preferred-height: 100%;
+        title: @tr("Triggers");
+
+        HorizontalLayout {
+            alignment: start;
+
+            add-btn := TonalButton {
+                text: @tr("Add Trigger  ▼");
+                icon: AppIcons.add;
+                height: 34px;
+                clicked => {
+                    add-menu.show();
+                }
+            }
+
+            add-menu := DropMenu {
+                x: add-btn.x;
+                y: add-btn.y + add-btn.height + 2px;
+                items: [
+                    { label: @tr("Manual"), value: "Manual" },
+                    { label: @tr("Schedule"), value: "Schedule" },
+                    { label: @tr("Hotkey"), value: "Hotkey" },
+                    { label: @tr("Window"), value: "WindowFocus" },
+                    { label: @tr("Process"), value: "Process" },
+                ];
+                chosen(v) => { root.add(v); }
+            }
+        }
+
+        ListView {
+            vertical-stretch: 1;
+            min-height: 120px;
+
+            for row[i] in root.rows: VerticalLayout {
+                padding-bottom: 4px;
+
+                Rectangle {
+                    height: 40px;
+                    background: i == root.selected ? MaterialPalette.secondary-container : transparent;
+                    border-radius: MaterialStyleMetrics.border_radius_8;
+
+                    TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => {
+                            root.selected = i;
+                            root.select(i);
+                        }
+                    }
+
+                    HorizontalLayout {
+                        padding-left: MaterialStyleMetrics.padding_12;
+                        padding-right: MaterialStyleMetrics.padding_12;
+                        spacing: MaterialStyleMetrics.spacing_8;
+
+                        MaterialText {
+                            text: row.kind;
+                            width: 96px;
+                            vertical-alignment: center;
+                            style: MaterialTypography.label-large;
+                            color: MaterialPalette.primary;
+                        }
+
+                        MaterialText {
+                            text: row.summary;
+                            horizontal-stretch: 1;
+                            overflow: elide;
+                            vertical-alignment: center;
+                            style: MaterialTypography.body-medium;
+                            color: MaterialPalette.on-surface;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

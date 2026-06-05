@@ -1,0 +1,57 @@
+import { ListView, Icon, MaterialText, MaterialTypography, MaterialPalette, MaterialStyleMetrics } from "@material";
+import { AppIcons } from "../icons.slint";
+import { PermissionRow } from "../models.slint";
+
+// Read-only overview of the selected macro's granted permissions. Granting
+// happens through the Save → approval flow; this panel only reports state.
+export component PermissionInspector {
+    in property <[PermissionRow]> rows;
+    in property <int> selected-index;
+
+    VerticalLayout {
+        padding: MaterialStyleMetrics.padding_16;
+        spacing: MaterialStyleMetrics.spacing_12;
+
+        MaterialText {
+            text: @tr("Granted permissions");
+            style: MaterialTypography.title-small;
+            color: MaterialPalette.on-surface;
+        }
+
+        ListView {
+            vertical-stretch: 1;
+
+            for perm[i] in root.rows : Rectangle {
+                height: 40px;
+                background: mod(i, 2) == 0 ? MaterialPalette.surface-container-low : transparent;
+                border-radius: MaterialStyleMetrics.border_radius_8;
+
+                HorizontalLayout {
+                    padding-left: MaterialStyleMetrics.padding_12;
+                    padding-right: MaterialStyleMetrics.padding_12;
+                    spacing: MaterialStyleMetrics.spacing_8;
+
+                    VerticalLayout {
+                        alignment: center;
+                        Icon { source: AppIcons.lock-open; colorize: MaterialPalette.primary; }
+                    }
+                    MaterialText {
+                        text: perm.label;
+                        horizontal-stretch: 1;
+                        overflow: elide;
+                        vertical-alignment: center;
+                        style: MaterialTypography.body-medium;
+                        color: MaterialPalette.on-surface;
+                    }
+                }
+            }
+        }
+
+        if root.rows.length == 0 && root.selected-index >= 0 : MaterialText {
+            text: @tr("This macro requires no sensitive permissions.");
+            wrap: word-wrap;
+            style: MaterialTypography.body-medium;
+            color: MaterialPalette.on-surface-variant;
+        }
+    }
+}

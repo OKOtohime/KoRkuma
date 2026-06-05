@@ -1,0 +1,72 @@
+import { TextField, ListView, HorizontalDivider, MaterialText, MaterialTypography, MaterialPalette, MaterialStyleMetrics } from "@material";
+import { VarRow } from "../models.slint";
+
+// Live snapshot of the global StateStore (auto-refreshed every second by the
+// engine timer). `filter` is applied on the Rust side over variable keys.
+export component VariableInspector {
+    in property <[VarRow]> vars;
+    in-out property <string> filter;
+
+    VerticalLayout {
+        padding: MaterialStyleMetrics.padding_8;
+        spacing: MaterialStyleMetrics.spacing_8;
+
+        TextField {
+            label: @tr("Search keys");
+            text <=> root.filter;
+            vertical-stretch: 0;
+        }
+
+        HorizontalLayout {
+            spacing: MaterialStyleMetrics.spacing_8;
+            MaterialText { text: @tr("Key"); width: 150px; style: MaterialTypography.label-large; color: MaterialPalette.on-surface-variant; }
+            MaterialText { text: @tr("Value"); horizontal-stretch: 1; style: MaterialTypography.label-large; color: MaterialPalette.on-surface-variant; }
+            MaterialText { text: @tr("Type"); width: 60px; style: MaterialTypography.label-large; color: MaterialPalette.on-surface-variant; }
+        }
+
+        HorizontalDivider {}
+
+        ListView {
+            vertical-stretch: 1;
+
+            for v in root.vars : Rectangle {
+                height: 26px;
+                HorizontalLayout {
+                    spacing: MaterialStyleMetrics.spacing_8;
+                    Text {
+                        text: v.key;
+                        width: 150px;
+                        font-family: "monospace";
+                        font-size: 12px;
+                        color: MaterialPalette.primary;
+                        overflow: elide;
+                        vertical-alignment: center;
+                    }
+                    Text {
+                        text: v.value;
+                        horizontal-stretch: 1;
+                        font-family: "monospace";
+                        font-size: 12px;
+                        color: MaterialPalette.on-surface;
+                        overflow: elide;
+                        vertical-alignment: center;
+                    }
+                    MaterialText {
+                        text: v.value-type;
+                        width: 60px;
+                        style: MaterialTypography.label-small;
+                        color: MaterialPalette.on-surface-variant;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+        }
+
+        MaterialText {
+            text: @tr("Auto-refreshing every second");
+            style: MaterialTypography.label-small;
+            color: MaterialPalette.on-surface-variant;
+            vertical-stretch: 0;
+        }
+    }
+}

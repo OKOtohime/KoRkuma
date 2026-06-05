@@ -1,0 +1,57 @@
+import { MaterialText, MaterialTypography, MaterialPalette, MaterialStyleMetrics } from "@material";
+
+// One selectable entry in a DropMenu: a human label and the value passed back.
+export struct DropMenuItem {
+    label: string,
+    value: string,
+}
+
+// A lightweight dropdown anchored under a button. It inherits PopupWindow so the
+// owner can `menu.show()` it; it sizes itself to its content (no fixed height),
+// so every row stays inside the popup bounds and is clickable. Picking a row
+// emits `chosen(value)` and closes the menu.
+export component DropMenu inherits PopupWindow {
+    in property <[DropMenuItem]> items;
+    callback chosen(string);
+
+    close-policy: close-on-click-outside;
+    width: 200px;
+
+    Rectangle {
+        background: MaterialPalette.surface-container;
+        border-radius: MaterialStyleMetrics.border_radius_8;
+        drop-shadow-blur: 10px;
+        drop-shadow-offset-y: 2px;
+        drop-shadow-color: #0000004d;
+
+        VerticalLayout {
+            padding: MaterialStyleMetrics.padding_4;
+
+            for item in root.items : Rectangle {
+                height: 40px;
+                border-radius: MaterialStyleMetrics.border_radius_8;
+                background: ta.has-hover ? MaterialPalette.secondary-container : transparent;
+
+                ta := TouchArea {
+                    mouse-cursor: pointer;
+                    clicked => {
+                        root.chosen(item.value);
+                        root.close();
+                    }
+                }
+
+                HorizontalLayout {
+                    padding-left: MaterialStyleMetrics.padding_12;
+                    padding-right: MaterialStyleMetrics.padding_12;
+
+                    MaterialText {
+                        text: item.label;
+                        vertical-alignment: center;
+                        style: MaterialTypography.body-medium;
+                        color: MaterialPalette.on-surface;
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,15 @@
+// Shared bottom-drawer state. `start-session()` is invoked from Run / Dry Run
+// to surface engine output: it expands the drawer and switches to the Logs tab.
+export global RunSessionController {
+    in-out property <bool> drawer-expanded: false;
+    in-out property <int> drawer-tab: 0;   // 0 Logs · 1 Events · 2 Errors
+
+    public function start-session() {
+        drawer-expanded = true;
+        drawer-tab = 0;
+    }
+
+    public function toggle() {
+        drawer-expanded = !drawer-expanded;
+    }
+}

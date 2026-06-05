@@ -1,0 +1,14 @@
+import { LogPanel } from "LogPanel.slint";
+import { LogEntry } from "../models.slint";
+
+// Events tab — engine lifecycle events (macro fired, variable changed).
+export component EventPanel {
+    in property <[LogEntry]> logs;
+
+    LogPanel {
+        width: 100%;
+        height: 100%;
+        logs: root.logs;
+        category: "event";
+    }
+}

@@ -1,0 +1,76 @@
+import {
+    SecondaryTabBar,
+    IconButton,
+    HorizontalDivider,
+    MaterialPalette,
+    MaterialStyleMetrics,
+} from "@material";
+import { Icons } from "@material-icon";
+import { LogPanel } from "LogPanel.slint";
+import { EventPanel } from "EventPanel.slint";
+import { ErrorPanel } from "ErrorPanel.slint";
+import { RunSessionController } from "../components/RunSessionController.slint";
+import { LogEntry } from "../models.slint";
+
+// VSCode-style collapsible bottom panel: Logs / Events / Errors.
+// Expansion state and active tab live in RunSessionController so Dry Run can
+// drive them.
+export component BottomDrawer {
+    in property <[LogEntry]> logs;
+
+    Rectangle {
+        background: MaterialPalette.surface-container;
+
+        VerticalLayout {
+            vertical-stretch: 1;
+            horizontal-stretch: 1;
+            // ── Header bar (always visible) ─────────────────────────────────
+            HorizontalLayout {
+                height: 44px;
+
+                SecondaryTabBar {
+                    width: 300px;
+                    current-index <=> RunSessionController.drawer-tab;
+                    items: [
+                        { text: @tr("Logs") },
+                        { text: @tr("Events") },
+                        { text: @tr("Errors") },
+                    ];
+                }
+
+                Rectangle {
+                    horizontal-stretch: 1;
+                }
+
+                VerticalLayout {
+                    alignment: center;
+                    IconButton {
+                        icon: RunSessionController.drawer-expanded ? Icons.arrow-drop-down : Icons.arrow-drop-up;
+                        tooltip: RunSessionController.drawer-expanded ? @tr("Collapse") : @tr("Expand");
+                        clicked => {
+                            RunSessionController.toggle();
+                        }
+                    }
+                }
+            }
+
+            HorizontalDivider { }
+
+            // ── Body (only when expanded) ───────────────────────────────────
+            if RunSessionController.drawer-expanded: VerticalLayout {
+                height: 220px;
+
+                if RunSessionController.drawer-tab == 0: LogPanel {
+                    logs: root.logs;
+                    category: "all";
+                }
+                if RunSessionController.drawer-tab == 1: EventPanel {
+                    logs: root.logs;
+                }
+                if RunSessionController.drawer-tab == 2: ErrorPanel {
+                    logs: root.logs;
+                }
+            }
+        }
+    }
+}

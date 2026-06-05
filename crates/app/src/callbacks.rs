@@ -6,10 +6,12 @@ use slint::{Model, ModelRc, VecModel};
 
 use korkuma_core::{
     domain::{
-        ActionConfig, ConstraintExpr, Macro, OnNoBackground, TargetSelector, TriggerConfig,
+        ActionConfig, CompareOp, ConstraintConfig, ConstraintExpr, Macro, OnNoBackground,
+        ScriptLang, TargetSelector, TriggerConfig, UiOp,
     },
     engine::EngineCommand,
     permission::{aggregate_from_configs, aggregate_from_workflow},
+    value::Value,
 };
 use korkuma_store::save_macros;
 
@@ -115,7 +117,9 @@ pub fn wire_callbacks(
                         ui.set_selected_index(-1);
                         ui.set_macro_name("".into());
                         ui.set_constraint_edit_json("".into());
+                        ui.set_constraint_leaf_type("".into());
                         ui.set_workflow_edit_json("".into());
+                        ui.set_workflow_action_type("".into());
                     } else if sel > idx as i32 {
                         ui.set_selected_index(sel - 1);
                     }
@@ -285,6 +289,41 @@ pub fn wire_callbacks(
             let rows_rc = ui.get_constraint_rows();
             if let Some(row) = rows_rc.row_data(idx as usize) {
                 ui.set_constraint_edit_json(row.params_json.clone());
+                ui.set_constraint_leaf_type(row.leaf_type.clone());
+                if let Ok(cfg) = serde_json::from_str::<ConstraintConfig>(row.params_json.as_str()) {
+                    match &cfg {
+                        ConstraintConfig::ActiveWindow { title_pattern, regex } => {
+                            ui.set_c_aw_title(title_pattern.clone().into());
+                            ui.set_c_aw_regex(*regex);
+                        }
+                        ConstraintConfig::TimeRange { from, to } => {
+                            ui.set_c_tr_from(from.clone().into());
+                            ui.set_c_tr_to(to.clone().into());
+                        }
+                        ConstraintConfig::VarCompare { key, op, value } => {
+                            ui.set_c_vc_key(key.clone().into());
+                            ui.set_c_vc_op_idx(match op {
+                                CompareOp::Eq => 0,
+                                CompareOp::Ne => 1,
+                                CompareOp::Lt => 2,
+                                CompareOp::Gt => 3,
+                                CompareOp::Le => 4,
+                                CompareOp::Ge => 5,
+                            });
+                            ui.set_c_vc_value(match value {
+                                Value::Int(i) => i.to_string(),
+                                Value::Float(f) => f.to_string(),
+                                Value::Bool(b) => b.to_string(),
+                                Value::Str(s) => s.clone(),
+                                _ => String::new(),
+                            }.into());
+                        }
+                        ConstraintConfig::Expression { dsl } => {
+                            ui.set_c_expr_dsl(dsl.clone().into());
+                        }
+                        _ => {}
+                    }
+                }
             }
         });
     }
@@ -305,6 +344,71 @@ pub fn wire_callbacks(
             if let Some(m) = list.get_mut(sel as usize) {
                 m.constraints =
                     update_constraint_leaf(m.constraints.clone(), idx as usize, new_json.as_str());
+                engine_sender.send(EngineCommand::UpdateMacro(m.clone())).ok();
+                let rows = to_slint_constraint_rows(&flatten_constraint(&m.constraints));
+                let rc = ui.get_constraint_rows();
+                if let Some(model) = rc.as_any().downcast_ref::<VecModel<ConstraintRow>>() {
+                    rebuild_model(model, rows);
+                }
+            }
+            persist(&list, &suppress_reload);
+        });
+    }
+
+    // ── constraint-update (typed UI) ──────────────────────────────────────────
+    {
+        let local_macros = Arc::clone(&local_macros);
+        let ui_weak = ui_weak.clone();
+        let engine_sender = engine_sender.clone();
+        let suppress_reload = Arc::clone(&suppress_reload);
+        ui.on_constraint_update(move || {
+            let Some(ui) = ui_weak.upgrade() else { return };
+            let sel = ui.get_selected_index();
+            let node_idx = ui.get_constraint_selected();
+            if sel < 0 || node_idx < 0 { return; }
+
+            let leaf_type = ui.get_constraint_leaf_type().to_string();
+            let new_cfg = match leaf_type.as_str() {
+                "ActiveWindow" => ConstraintConfig::ActiveWindow {
+                    title_pattern: ui.get_c_aw_title().to_string(),
+                    regex: ui.get_c_aw_regex(),
+                },
+                "TimeRange" => ConstraintConfig::TimeRange {
+                    from: ui.get_c_tr_from().to_string(),
+                    to: ui.get_c_tr_to().to_string(),
+                },
+                "VarCompare" => {
+                    let op = match ui.get_c_vc_op_idx() {
+                        1 => CompareOp::Ne,
+                        2 => CompareOp::Lt,
+                        3 => CompareOp::Gt,
+                        4 => CompareOp::Le,
+                        5 => CompareOp::Ge,
+                        _ => CompareOp::Eq,
+                    };
+                    let vs = ui.get_c_vc_value().to_string();
+                    let value = if let Ok(i) = vs.parse::<i64>() {
+                        Value::Int(i)
+                    } else if let Ok(f) = vs.parse::<f64>() {
+                        Value::Float(f)
+                    } else if vs == "true" {
+                        Value::Bool(true)
+                    } else if vs == "false" {
+                        Value::Bool(false)
+                    } else {
+                        Value::Str(vs)
+                    };
+                    ConstraintConfig::VarCompare { key: ui.get_c_vc_key().to_string(), op, value }
+                }
+                "Expression" => ConstraintConfig::Expression {
+                    dsl: ui.get_c_expr_dsl().to_string(),
+                },
+                _ => return,
+            };
+            let new_json = serde_json::to_string(&new_cfg).unwrap_or_default();
+            let mut list = local_macros.lock().unwrap();
+            if let Some(m) = list.get_mut(sel as usize) {
+                m.constraints = update_constraint_leaf(m.constraints.clone(), node_idx as usize, &new_json);
                 engine_sender.send(EngineCommand::UpdateMacro(m.clone())).ok();
                 let rows = to_slint_constraint_rows(&flatten_constraint(&m.constraints));
                 let rc = ui.get_constraint_rows();
@@ -340,6 +444,7 @@ pub fn wire_callbacks(
                 }
                 ui.set_constraint_selected(-1);
                 ui.set_constraint_edit_json("".into());
+                ui.set_constraint_leaf_type("".into());
             }
             persist(&list, &suppress_reload);
         });
@@ -462,33 +567,47 @@ pub fn wire_callbacks(
             let Some(ui) = ui_weak.upgrade() else { return };
             let rows_rc = ui.get_workflow_rows();
             if let Some(row) = rows_rc.row_data(idx as usize) {
-                ui.set_workflow_edit_json(row.params_json.clone());
-                if row.action_type == "Interact" {
-                    if let Ok(cfg) =
-                        serde_json::from_str::<ActionConfig>(row.params_json.as_str())
-                    {
-                        if let ActionConfig::Interact { target, on_no_background, .. } = &cfg {
-                            let (ttype, tpat) = match target {
-                                TargetSelector::Foreground => ("Foreground", String::new()),
-                                TargetSelector::Window { title_pattern, .. } => {
-                                    ("Window", title_pattern.clone())
-                                }
-                                TargetSelector::Process { name } => ("Process", name.clone()),
-                                TargetSelector::BrowserTab { url_pattern } => {
-                                    ("BrowserTab", url_pattern.clone())
-                                }
-                                TargetSelector::Custom { provider, .. } => {
-                                    ("Foreground", provider.clone())
-                                }
+                ui.set_workflow_action_type(row.action_type.clone());
+                if let Ok(cfg) = serde_json::from_str::<ActionConfig>(row.params_json.as_str()) {
+                    match &cfg {
+                        ActionConfig::Notify { title, body } => {
+                            ui.set_wf_notify_title(title.clone().into());
+                            ui.set_wf_notify_body(body.clone().into());
+                        }
+                        ActionConfig::RunCommand { program, args, capture } => {
+                            ui.set_wf_run_program(program.clone().into());
+                            ui.set_wf_run_args(args.join(" ").into());
+                            ui.set_wf_run_capture(*capture);
+                        }
+                        ActionConfig::RunScript { source, .. } => {
+                            ui.set_wf_script_lang_idx(0); // only Rhai
+                            ui.set_wf_script_source(source.clone().into());
+                        }
+                        ActionConfig::Delay { millis } => {
+                            ui.set_wf_delay_ms(millis.to_string().into());
+                        }
+                        ActionConfig::Interact { target, on_no_background, op } => {
+                            let (ttype_idx, tpat) = match target {
+                                TargetSelector::Foreground => (0i32, String::new()),
+                                TargetSelector::Window { title_pattern, .. } => (1, title_pattern.clone()),
+                                TargetSelector::Process { name } => (2, name.clone()),
+                                TargetSelector::BrowserTab { url_pattern } => (3, url_pattern.clone()),
+                                TargetSelector::Custom { provider, .. } => (0, provider.clone()),
                             };
-                            let nobg = match on_no_background {
-                                OnNoBackground::Degrade => "Degrade",
-                                OnNoBackground::Fail => "Fail",
-                                OnNoBackground::Queue => "Queue",
+                            let nobg_idx = match on_no_background {
+                                OnNoBackground::Degrade => 0i32,
+                                OnNoBackground::Fail => 1,
+                                OnNoBackground::Queue => 2,
                             };
-                            ui.set_target_type(ttype.into());
+                            ui.set_target_type_idx(ttype_idx);
                             ui.set_target_pattern(tpat.into());
-                            ui.set_on_no_bg(nobg.into());
+                            ui.set_on_no_bg_idx(nobg_idx);
+                            ui.set_workflow_edit_json(
+                                serde_json::to_string_pretty(op).unwrap_or_default().into()
+                            );
+                        }
+                        _ => {
+                            ui.set_workflow_edit_json(row.params_json.clone());
                         }
                     }
                 }
@@ -513,6 +632,81 @@ pub fn wire_callbacks(
                 let root = m.workflow.clone().unwrap_or_else(|| m.root_workflow());
                 let new_root =
                     update_workflow_action(root, idx as usize, new_json.as_str());
+                m.workflow = Some(new_root.clone());
+                engine_sender.send(EngineCommand::UpdateMacro(m.clone())).ok();
+                let rows = to_slint_workflow_rows(&flatten_workflow(&new_root));
+                let rc = ui.get_workflow_rows();
+                if let Some(model) = rc.as_any().downcast_ref::<VecModel<WorkflowRow>>() {
+                    rebuild_model(model, rows);
+                }
+            }
+            persist(&list, &suppress_reload);
+        });
+    }
+
+    // ── workflow-update (typed UI) ────────────────────────────────────────────
+    {
+        let local_macros = Arc::clone(&local_macros);
+        let ui_weak = ui_weak.clone();
+        let engine_sender = engine_sender.clone();
+        let suppress_reload = Arc::clone(&suppress_reload);
+        ui.on_workflow_update(move || {
+            let Some(ui) = ui_weak.upgrade() else { return };
+            let sel = ui.get_selected_index();
+            let node_idx = ui.get_workflow_selected();
+            if sel < 0 || node_idx < 0 { return; }
+
+            let action_type = ui.get_workflow_action_type().to_string();
+            let new_cfg = match action_type.as_str() {
+                "Notify" => ActionConfig::Notify {
+                    title: ui.get_wf_notify_title().to_string(),
+                    body: ui.get_wf_notify_body().to_string(),
+                },
+                "RunCommand" => ActionConfig::RunCommand {
+                    program: ui.get_wf_run_program().to_string(),
+                    args: ui.get_wf_run_args()
+                        .split_whitespace()
+                        .map(String::from)
+                        .collect(),
+                    capture: ui.get_wf_run_capture(),
+                },
+                "RunScript" => ActionConfig::RunScript {
+                    lang: ScriptLang::Rhai,
+                    source: ui.get_wf_script_source().to_string(),
+                },
+                "Delay" => {
+                    let ms = ui.get_wf_delay_ms().parse::<u64>().unwrap_or(1000);
+                    ActionConfig::Delay { millis: ms }
+                }
+                "Interact" => {
+                    let target = match ui.get_target_type_idx() {
+                        1 => TargetSelector::Window {
+                            title_pattern: ui.get_target_pattern().to_string(),
+                            regex: false,
+                        },
+                        2 => TargetSelector::Process { name: ui.get_target_pattern().to_string() },
+                        3 => TargetSelector::BrowserTab { url_pattern: ui.get_target_pattern().to_string() },
+                        _ => TargetSelector::Foreground,
+                    };
+                    let on_no_background = match ui.get_on_no_bg_idx() {
+                        1 => OnNoBackground::Fail,
+                        2 => OnNoBackground::Queue,
+                        _ => OnNoBackground::Degrade,
+                    };
+                    let op = serde_json::from_str::<UiOp>(ui.get_workflow_edit_json().as_str())
+                        .unwrap_or(UiOp::Click { node: String::new() });
+                    ActionConfig::Interact { target, op, on_no_background }
+                }
+                _ => {
+                    let Ok(cfg) = serde_json::from_str::<ActionConfig>(ui.get_workflow_edit_json().as_str()) else { return };
+                    cfg
+                }
+            };
+            let new_json = serde_json::to_string(&new_cfg).unwrap_or_default();
+            let mut list = local_macros.lock().unwrap();
+            if let Some(m) = list.get_mut(sel as usize) {
+                let root = m.workflow.clone().unwrap_or_else(|| m.root_workflow());
+                let new_root = update_workflow_action(root, node_idx as usize, &new_json);
                 m.workflow = Some(new_root.clone());
                 engine_sender.send(EngineCommand::UpdateMacro(m.clone())).ok();
                 let rows = to_slint_workflow_rows(&flatten_workflow(&new_root));
@@ -550,6 +744,7 @@ pub fn wire_callbacks(
                 }
                 ui.set_workflow_selected(-1);
                 ui.set_workflow_edit_json("".into());
+                ui.set_workflow_action_type("".into());
             }
             persist(&list, &suppress_reload);
         });

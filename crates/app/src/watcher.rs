@@ -2,13 +2,11 @@ use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use notify::{EventKind, RecursiveMode, Watcher};
-use slint::{Model, VecModel};
-
 use korkuma_core::{domain::Macro, engine::EngineCommand};
 use korkuma_store::load_macros;
 
 use crate::{LogEntry, MainWindow, MACROS_PATH};
-use crate::model::reload_ui_model;
+use crate::model::{push_log, reload_ui_model};
 
 pub fn spawn_file_watcher(
     local_macros: Arc<Mutex<Vec<Macro>>>,
@@ -81,14 +79,13 @@ pub fn spawn_file_watcher(
                 }
                 Err(e) => {
                     eprintln!("[korkuma] hot-reload failed: {e}; keeping current macros");
-                    let msg = format!("[WRN] hot-reload failed: {e}");
+                    let msg = format!("hot-reload failed: {e}");
                     let _ = ui_weak.upgrade_in_event_loop(move |ui| {
-                        let logs_rc = ui.get_logs();
-                        if let Some(logs) =
-                            logs_rc.as_any().downcast_ref::<VecModel<LogEntry>>()
-                        {
-                            logs.insert(0, LogEntry { message: msg.into() });
-                        }
+                        push_log(&ui, LogEntry {
+                            level: "WARN".into(),
+                            source: "watcher".into(),
+                            message: msg.into(),
+                        });
                     });
                 }
             }

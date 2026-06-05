@@ -1,0 +1,78 @@
+import { ListTile, HorizontalDivider, MaterialText, MaterialTypography, MaterialPalette, MaterialStyleMetrics } from "@material";
+import { SectionCard } from "../widgets/SectionCard.slint";
+
+// Settings overview. Sub-sections follow a Material navigation-drawer style;
+// the runtime currently exposes no editable settings, so these are placeholders.
+export component SettingsPage {
+    property <int> section: 0;
+
+    VerticalLayout {
+        padding: MaterialStyleMetrics.padding_24;
+        spacing: MaterialStyleMetrics.spacing_16;
+
+        MaterialText {
+            text: @tr("Settings");
+            style: MaterialTypography.headline-small;
+            color: MaterialPalette.on-surface;
+        }
+
+        HorizontalLayout {
+            spacing: MaterialStyleMetrics.spacing_16;
+            vertical-stretch: 1;
+
+            // ── Section list ────────────────────────────────────────────────
+            VerticalLayout {
+                width: 220px;
+                alignment: start;
+
+                VerticalLayout {
+                    spacing: 4px;
+
+                    for item[i] in [@tr("Appearance"), @tr("Runtime"), @tr("Logging"), @tr("Plugins")] : Rectangle {
+                        height: 44px;
+                        background: i == root.section ? MaterialPalette.secondary-container : transparent;
+                        border-radius: MaterialStyleMetrics.border_radius_8;
+
+                        TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => { root.section = i; }
+                        }
+
+                        HorizontalLayout {
+                            padding-left: MaterialStyleMetrics.padding_12;
+                            MaterialText {
+                                text: item;
+                                vertical-alignment: center;
+                                style: MaterialTypography.body-medium;
+                                color: i == root.section ? MaterialPalette.on-secondary-container : MaterialPalette.on-surface;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ── Section content ─────────────────────────────────────────────
+            VerticalLayout {
+                horizontal-stretch: 1;
+                alignment: start;
+
+                SectionCard {
+                    title: root.section == 0 ? @tr("Appearance")
+                        : root.section == 1 ? @tr("Runtime")
+                        : root.section == 2 ? @tr("Logging")
+                        : @tr("Plugins");
+
+                    MaterialText {
+                        text: root.section == 0 ? @tr("Theme follows the system light/dark preference.")
+                            : root.section == 1 ? @tr("Engine runtime options will appear here.")
+                            : root.section == 2 ? @tr("Log level and retention options will appear here.")
+                            : @tr("Installed plugins and script extensions will appear here.");
+                        wrap: word-wrap;
+                        style: MaterialTypography.body-medium;
+                        color: MaterialPalette.on-surface-variant;
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,21 @@
+import { NavigationRail } from "@material";
+import { AppIcons } from "../icons.slint";
+
+// Left Material 3 navigation rail switching the top-level page.
+//   0 = Macros, 1 = Settings, 2 = About
+export component AppNavigationRail {
+    in-out property <int> current-page;
+
+    width: 80px;
+
+    NavigationRail {
+        width: 100%;
+        height: 100%;
+        current-index <=> root.current-page;
+        items: [
+            { icon: AppIcons.bolt, text: @tr("Macros") },
+            { icon: AppIcons.settings, text: @tr("Settings") },
+            { icon: AppIcons.info, text: @tr("About") },
+        ];
+    }
+}
